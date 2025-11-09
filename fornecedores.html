@@ -1,203 +1,164 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cadastro de Fornecedores</title>
+  <title>AllDev - Fornecedores</title>
 
-  <!-- Bootstrap -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-  <!-- Ícones -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
-
-  <style>
-    body {
-      background-color: #121212;
-      color: #fff;
-      font-family: "Poppins", sans-serif;
-    }
-    .container {
-      margin-top: 60px;
-    }
-    .card {
-      background: #1e1e1e;
-      border: none;
-      border-radius: 15px;
-      box-shadow: 0 0 15px rgba(255, 104, 40, 0.4);
-    }
-    .form-control, .form-select {
-      background-color: #2a2a2a;
-      color: #fff;
-      border: 1px solid #444;
-    }
-    .form-control:focus {
-      background-color: #333;
-      border-color: #ff6828;
-      color: #fff;
-      box-shadow: 0 0 8px #ff6828;
-    }
-    .btn-laranja {
-      background-color: #ff6828;
-      border: none;
-      color: #fff;
-      transition: 0.3s;
-    }
-    .btn-laranja:hover {
-      background-color: #ff824d;
-    }
-    input::placeholder {
-      color: #aaa;
-    }
-    table {
-      color: #fff;
-    }
-    .table-dark td, .table-dark th {
-      border-color: #333;
-    }
-  </style>
+  <!-- Bootstrap e Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <div class="container">
-    <h2 class="text-center mb-4">
-      <i class="fas fa-truck me-2"></i>Cadastro de Fornecedores
-    </h2>
 
-    <!-- Barra de ferramentas -->
-    <div class="d-flex justify-content-between mb-3">
-      <input
-        type="text"
-        id="pesquisaFornecedor"
-        class="form-control w-50"
-        placeholder="🔍 Pesquisar fornecedor..."
-      />
-      <button
-        class="btn btn-laranja"
-        data-bs-toggle="modal"
-        data-bs-target="#modalCadastroFornecedor"
-      >
-        <i class="fas fa-plus me-2"></i>Novo Fornecedor
+<body class="dashboard-page">
+
+  <!-- Navbar superior -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom" id="top-navbar">
+    <div class="container-fluid">
+      <button class="btn btn-outline-secondary menu-toggle" id="menu-toggle">
+        <i class="fas fa-bars"></i>
       </button>
+
+      <div class="navbar-logo-text ms-3">
+        <img src="LogoAlldev.jpg" alt="AllDev Logo">
+      </div>
+
+      <div class="d-flex align-items-center ms-auto">
+        <span class="navbar-text me-3">Admin</span>
+        <div class="user-avatar-small">
+          <i class="fas fa-user-circle"></i>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Container geral -->
+  <div class="d-flex" id="wrapper">
+
+    <!-- Sidebar -->
+    <div class="bg-light border-end" id="sidebar-wrapper">
+      <div class="list-group list-group-flush">
+        <a href="dashboard.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-home"></i> Início
+        </a>
+        <a href="estoque.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-box"></i> Estoque
+        </a>
+        <a href="fornecedores.html" class="list-group-item list-group-item-action p-3 active-menu">
+          <i class="fas fa-user-friends"></i> Fornecedores
+        </a>
+        <a href="clientes.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-users"></i> Clientes
+        </a>
+        <a href="vendas.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-shopping-cart"></i> Vendas
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <a href="perfil.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-cog"></i> Perfil
+        </a>
+        <a href="#" onclick="logout()" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
     </div>
 
-    <!-- Tabela -->
-    <div class="card p-3">
-      <table class="table table-dark table-hover">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>CNPJ</th>
-            <th>Telefone</th>
-            <th>Email</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabela-fornecedores">
-          <tr>
-            <td colspan="5" class="text-center text-muted">
-              Nenhum fornecedor encontrado.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Conteúdo principal -->
+    <div id="page-content-wrapper">
+      <div class="container-fluid p-4">
+        <h2 class="mb-4">Fornecedores</h2>
+
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="input-group w-50">
+              <input type="text" class="form-control" placeholder="Pesquisar fornecedores..." id="pesquisaFornecedor" />
+              <button class="btn btn-outline-secondary" type="button" id="btnBuscarFornecedor">
+                <i class="fas fa-search"></i> Buscar
+              </button>
+            </div>
+            <button
+              class="btn btn-primary"
+              style="background-color: var(--primary-color); border: none;"
+              data-bs-toggle="modal"
+              data-bs-target="#modalCadastroFornecedor"
+            >
+              <i class="fas fa-plus"></i> Novo
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-dark-custom">
+                <tr>
+                  <th>Razão Social</th>
+                  <th>CNPJ</th>
+                  <th>E-mail</th>
+                  <th>Telefone</th>
+                  <th>Opções</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaFornecedores">
+                <!-- Dados carregados do Firebase aparecerão aqui -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Modal de Cadastro -->
-  <div
-    class="modal fade"
-    id="modalCadastroFornecedor"
-    tabindex="-1"
-    aria-labelledby="modalCadastroFornecedorLabel"
-    aria-hidden="true"
-  >
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-light">
+  <!-- Modal Cadastro -->
+  <div class="modal fade" id="modalCadastroFornecedor" tabindex="-1" aria-labelledby="modalCadastroFornecedorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="modalCadastroFornecedorLabel">
-            Novo Fornecedor
-          </h5>
-          <button
-            type="button"
-            class="btn-close btn-close-white"
-            data-bs-dismiss="modal"
-            aria-label="Fechar"
-          ></button>
+          <h5 class="modal-title" id="modalCadastroFornecedorLabel">Cadastrar novo Fornecedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+
         <div class="modal-body">
-          <form id="form-fornecedor">
-            <div class="mb-3">
-              <label for="nome" class="form-label">Nome do Fornecedor</label>
-              <input
-                type="text"
-                class="form-control"
-                id="nome"
-                placeholder="Ex: Papelaria Central"
-                required
-              />
+          <form id="formFornecedor">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Razão Social</label>
+                <input type="text" class="form-control" id="fornRazao" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">CNPJ</label>
+                <input type="text" class="form-control" id="fornCnpj" required />
+              </div>
             </div>
-            <div class="mb-3">
-              <label for="cnpj" class="form-label">CNPJ</label>
-              <input
-                type="text"
-                class="form-control"
-                id="cnpj"
-                maxlength="18"
-                placeholder="Ex: 12.345.678/0001-99"
-                required
-              />
-            </div>
-            <div class="mb-3">
-              <label for="telefone" class="form-label">Telefone</label>
-              <input
-                type="text"
-                class="form-control"
-                id="telefone"
-                maxlength="15"
-                placeholder="Ex: (11) 99999-9999"
-                required
-              />
-            </div>
-            <div class="mb-3">
-              <label for="email" class="form-label">E-mail</label>
-              <input
-                type="email"
-                class="form-control"
-                id="email"
-                placeholder="exemplo@email.com"
-                required
-              />
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">E-mail</label>
+                <input type="email" class="form-control" id="fornEmail" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Telefone</label>
+                <input type="text" class="form-control" id="fornTelefone" required />
+              </div>
             </div>
           </form>
         </div>
+
         <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-bs-dismiss="modal"
-          >
-            Fechar
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Fechar
           </button>
-          <button id="btnSalvarFornecedor" class="btn btn-laranja">
-            Salvar
+          <button id="btnSalvarFornecedor" type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;">
+            <i class="fas fa-save"></i> Salvar Fornecedor
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Bootstrap -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Firebase Config -->
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="./firebase-config.js"></script>
-
-  <!-- Script Principal -->
   <script type="module" src="./fornecedor.js"></script>
 </body>
 </html>
