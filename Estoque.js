@@ -1,5 +1,5 @@
 // Importações do Firebase
-import { auth, db } from "./firebaseConfig.js";
+import { auth, db } from "./firebase-config.js";
 import {
   signOut,
   onAuthStateChanged
