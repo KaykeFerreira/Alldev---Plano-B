@@ -55,7 +55,6 @@ btnSalvarFornecedor.addEventListener("click", async () => {
   const telefone = document.getElementById("fornTelefone").value.trim();
   const email = document.getElementById("fornEmail").value.trim();
 
-  // Valida campos
   if (!nome || !cnpj || !telefone || !email) {
     alert("⚠️ Preencha todos os campos!");
     return;
@@ -71,15 +70,14 @@ btnSalvarFornecedor.addEventListener("click", async () => {
       alert("✅ Fornecedor atualizado com sucesso!");
       editandoId = null;
     } else {
-      await addDoc(fornecedoresRef, { nome, cnpj, telefone, email, criadoEm: new Date() });
+      const novoDoc = await addDoc(fornecedoresRef, { nome, cnpj, telefone, email, criadoEm: new Date() });
+      editandoId = novoDoc.id; // pega o ID gerado
       alert("✅ Fornecedor cadastrado com sucesso!");
     }
 
-    // Reset e fechamento do modal
     formFornecedor.reset();
     const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
-
     listarFornecedores();
   } catch (erro) {
     console.error("Erro ao salvar fornecedor:", erro);
@@ -89,7 +87,7 @@ btnSalvarFornecedor.addEventListener("click", async () => {
 
 // Função para listar fornecedores
 async function listarFornecedores() {
-  tabelaFornecedores.innerHTML = "<tr><td colspan='5' class='text-center text-muted'>Carregando...</td></tr>";
+  tabelaFornecedores.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
 
   try {
     const snapshot = await getDocs(fornecedoresRef);
@@ -99,6 +97,7 @@ async function listarFornecedores() {
       const f = docItem.data();
       html += `
         <tr>
+          <td>${docItem.id}</td>
           <td>${f.nome}</td>
           <td>${f.cnpj}</td>
           <td>${f.email}</td>
@@ -111,9 +110,9 @@ async function listarFornecedores() {
       `;
     });
 
-    tabelaFornecedores.innerHTML = html || "<tr><td colspan='5' class='text-center text-muted'>Nenhum fornecedor encontrado.</td></tr>";
+    tabelaFornecedores.innerHTML = html || "<tr><td colspan='6' class='text-center text-muted'>Nenhum fornecedor encontrado.</td></tr>";
 
-    // Eventos de exclusão
+    // Botões de exclusão
     document.querySelectorAll(".btn-excluir").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.target.getAttribute("data-id");
@@ -124,7 +123,7 @@ async function listarFornecedores() {
       });
     });
 
-    // Eventos de edição
+    // Botões de edição
     document.querySelectorAll(".btn-editar").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const id = e.target.getAttribute("data-id");
@@ -142,7 +141,7 @@ async function listarFornecedores() {
 
   } catch (erro) {
     console.error("Erro ao listar fornecedores:", erro);
-    tabelaFornecedores.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Erro ao carregar fornecedores.</td></tr>";
+    tabelaFornecedores.innerHTML = "<tr><td colspan='6' class='text-center text-danger'>Erro ao carregar fornecedores.</td></tr>";
   }
 }
 
@@ -150,7 +149,7 @@ async function listarFornecedores() {
 pesquisaFornecedor.addEventListener("input", () => {
   const filtro = pesquisaFornecedor.value.toLowerCase();
   Array.from(tabelaFornecedores.rows).forEach(row => {
-    const nome = row.cells[0]?.textContent.toLowerCase();
+    const nome = row.cells[1]?.textContent.toLowerCase(); // nome agora é a 2ª coluna
     row.style.display = nome?.includes(filtro) ? "" : "none";
   });
 });
