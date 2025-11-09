@@ -1,38 +1,20 @@
-// firebase-config.js
+// Importando os módulos que vamos usar do Firebase (sem o Analytics)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// 1. Configure suas credenciais (OBRIGATÓRIO: Substitua por seus dados reais)
+// Configuração do seu projeto Firebase
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO_ID.firebaseapp.com",
-    projectId: "SEU_PROJETO_ID",
-    storageBucket: "SEU_PROJETO_ID.appspot.com",
-    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-    appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCkz6E2D2qnUKE5M03ALu_uqCZK7JLQp3Y",
+  authDomain: "alldev---plano-b.firebaseapp.com",
+  projectId: "alldev---plano-b",
+  storageBucket: "alldev---plano-b.firebasestorage.app",
+  messagingSenderId: "766087243717",
+  appId: "1:766087243717:web:d77ece57140c7d748b8dac",
+  measurementId: "G-3PFEXYL9XC"
 };
 
-// 2. Importar módulos do Firebase (versão 9 modular via CDN)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-auth.js";
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query 
-} from "https://www.gstatic.com/firebasejs/9.1.0/firebase-firestore.js";
-
-// 3. Inicializar e exportar instâncias
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-export { 
-    auth, 
-    db, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query 
-};
+// Inicializando o Firebase
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
