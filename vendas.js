@@ -1,16 +1,16 @@
-// vendas.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+// ======== Configuração e Inicialização do Firebase ========
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-// 🔧 Configuração Firebase
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCkz6E2D2qnUKE5M03ALu_uqCZK7JLQp3Y",
+  authDomain: "alldev---plano-b.firebaseapp.com",
+  projectId: "alldev---plano-b",
+  storageBucket: "alldev---plano-b.firebasestorage.app",
+  messagingSenderId: "766087243717",
+  appId: "1:766087243717:web:d77ece57140c7d748b8dac",
+  measurementId: "G-3PFEXYL9XC"
 };
 
 // Inicializa Firebase
@@ -18,90 +18,83 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// 🔒 Verificação de login
-onAuthStateChanged(auth, (user) => {
-  if (!user) window.location.href = "login.html";
-  else document.getElementById("usuarioLogado").textContent = user.email;
+// ======== Função: Registrar uma venda ========
+async function registrarVenda(event) {
+  event.preventDefault();
+
+  const cliente = document.getElementById("cliente").value.trim();
+  const produto = document.getElementById("produto").value.trim();
+  const quantidade = document.getElementById("quantidade").value.trim();
+  const valor = document.getElementById("valor").value.trim();
+
+  if (!cliente || !produto || !quantidade || !valor) {
+    alert("Preencha todos os campos antes de salvar!");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "vendas"), {
+      cliente,
+      produto,
+      quantidade: parseInt(quantidade),
+      valor: parseFloat(valor),
+      data: new Date().toLocaleString("pt-BR")
+    });
+
+    alert("Venda registrada com sucesso!");
+    document.getElementById("vendaForm").reset();
+    listarVendas();
+  } catch (error) {
+    console.error("Erro ao registrar venda:", error);
+    alert("Erro ao registrar venda. Verifique o console.");
+  }
+}
+
+// ======== Função: Listar vendas no HTML ========
+async function listarVendas() {
+  const tabela = document.getElementById("tabelaVendas");
+  tabela.innerHTML = "";
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "vendas"));
+    querySnapshot.forEach((doc) => {
+      const venda = doc.data();
+      const row = `
+        <tr>
+          <td>${venda.cliente}</td>
+          <td>${venda.produto}</td>
+          <td>${venda.quantidade}</td>
+          <td>R$ ${venda.valor.toFixed(2)}</td>
+          <td>${venda.data}</td>
+        </tr>
+      `;
+      tabela.innerHTML += row;
+    });
+  } catch (error) {
+    console.error("Erro ao listar vendas:", error);
+  }
+}
+
+// ======== Função: Logout ========
+function logout() {
+  signOut(auth)
+    .then(() => {
+      alert("Logout realizado com sucesso!");
+      window.location.href = "login.html";
+    })
+    .catch((error) => {
+      console.error("Erro ao fazer logout:", error);
+    });
+}
+
+// ======== Eventos ========
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("vendaForm");
+  if (form) {
+    form.addEventListener("submit", registrarVenda);
+  }
+
+  listarVendas();
 });
 
-// 🚪 Logout
-window.logout = () => {
-  signOut(auth).then(() => window.location.href = "login.html");
-};
-
-// 🧾 Cadastrar Venda
-const formVenda = document.getElementById("formVenda");
-if (formVenda) {
-  formVenda.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const cliente = document.getElementById("cliente").value;
-    const produto = document.getElementById("produto").value;
-    const quantidade = parseInt(document.getElementById("quantidade").value);
-    const total = parseFloat(document.getElementById("total").value);
-
-    if (!cliente || !produto || !quantidade || !total) {
-      alert("Preencha todos os campos!");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "vendas"), {
-        cliente,
-        produto,
-        quantidade,
-        total,
-        data: new Date().toLocaleString()
-      });
-
-      alert("✅ Venda cadastrada com sucesso!");
-      formVenda.reset();
-      const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroVenda"));
-      modal.hide();
-    } catch (erro) {
-      console.error("Erro ao cadastrar:", erro);
-      alert("❌ Falha ao cadastrar venda!");
-    }
-  });
-}
-
-// 📋 Listar Vendas em tempo real
-const listaVendas = document.getElementById("listaVendas");
-if (listaVendas) {
-  const refVendas = collection(db, "vendas");
-
-  onSnapshot(refVendas, (snapshot) => {
-    listaVendas.innerHTML = "";
-    snapshot.forEach((docSnap) => {
-      const venda = docSnap.data();
-      const id = docSnap.id;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${venda.cliente}</td>
-        <td>${venda.produto}</td>
-        <td>${venda.quantidade}</td>
-        <td>R$ ${venda.total.toFixed(2)}</td>
-        <td>${venda.data}</td>
-        <td>
-          <button class="btn btn-sm btn-danger" onclick="removerVenda('${id}')">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      `;
-      listaVendas.appendChild(tr);
-    });
-  });
-}
-
-// 🗑️ Remover venda
-window.removerVenda = async (id) => {
-  if (confirm("Tem certeza que deseja excluir esta venda?")) {
-    try {
-      await deleteDoc(doc(db, "vendas", id));
-      alert("Venda removida!");
-    } catch (erro) {
-      console.error("Erro ao excluir:", erro);
-    }
-  }
-};
+window.logout = logout;
