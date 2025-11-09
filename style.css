@@ -1,0 +1,375 @@
+/* ==================== VARIÁVEIS ==================== */
+:root {
+    --primary-color: #FF6828; 
+    --secondary-color: #000000; 
+    --accent-light-bg: #fff0e3; 
+    --sidebar-bg: var(--primary-color);
+    --active-menu-bg: #E5E5E5;
+    --content-bg: #f4f4f9;
+    --text-dark: #000000; 
+    --navbar-bg: #FFFFFF;
+}
+
+/* ==================== LOGIN ==================== */
+.login-page {
+    background: linear-gradient(to bottom, #f27136, #d5d5b3, #94b19f);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 0;
+    margin: 0;
+}
+
+.login-container {
+    width: 90%;
+    max-width: 400px;
+    padding: 50px;
+    background-color: var(--accent-light-bg);
+    box-shadow: 0 0 100px #FFBD9A;
+    border-radius: 8px;
+}
+
+.logo-text {
+    font-size: 24px;
+    color: var(--secondary-color);
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.login-form-box {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+}
+
+.form-label {
+    font-weight: bold;
+    color: var(--secondary-color);
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    margin: 5px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.btn-login {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+    font-weight: bold;
+    padding: 10px;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+    width: 100%;
+    border-radius: 4px;
+}
+
+.btn-login:hover {
+    background-color: #333333;
+    border-color: #333333;
+    color: white;
+}
+
+.register {
+    text-align: center;
+    font-size: 15px;
+    margin-top: 15px;
+}
+
+/* ==================== LAYOUT BASE ==================== */
+.dashboard-page {
+    background-color: var(--content-bg);
+}
+
+#wrapper {
+    display: flex;
+}
+
+/* ==================== NAVBAR SUPERIOR ==================== */
+#top-navbar.navbar {
+    background-color: var(--navbar-bg) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    border-bottom: 1px solid #e0e0e0 !important;
+    width: 100%;
+}
+
+.navbar-logo-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+}
+.navbar-logo-text img {
+    height: 30px;
+}
+.navbar-text {
+    color: var(--secondary-color) !important;
+}
+.user-avatar-small {
+    color: var(--secondary-color);
+    font-weight: bold;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ==================== SIDEBAR ==================== */
+#sidebar-wrapper {
+    min-height: 90vh;
+    width: 200px;
+    background-color: var(--sidebar-bg) !important;
+    color: white;
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    z-index: 1050;
+}
+
+.sidebar-heading {
+    display: none;
+}
+
+/* LINKS DA SIDEBAR */
+.list-group-item {
+    border: none !important;
+    background-color: var(--sidebar-bg) !important;
+    color: var(--secondary-color) !important;
+    padding: 10px 15px !important;
+    transition: background-color 0.2s, color 0.2s;
+    font-weight: 500;
+    display: flex !important;
+    align-items: center;
+    border-radius: 0;
+}
+
+.list-group-item i,
+.list-group-item svg {
+    margin-right: 12px;
+    font-size: 1.1em;
+    color: var(--secondary-color);
+}
+
+.list-group-item:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+    color: var(--secondary-color) !important;
+    font-weight: 600;
+}
+
+/* ITEM ATIVO */
+.active-menu {
+    background-color: var(--active-menu-bg) !important;
+    color: var(--secondary-color) !important;
+    font-weight: 600;
+    border-radius: 5px !important;
+    margin: 5px !important;
+    width: calc(100% - 10px) !important;
+    padding: 10px 15px !important;
+}
+.active-menu:hover {
+    background-color: #dcdcdc !important;
+}
+.active-menu i,
+.active-menu svg {
+    color: var(--secondary-color);
+}
+
+/* Rodapé */
+.list-group-flush {
+    flex-grow: 1;
+}
+.sidebar-footer {
+    position: static;
+    width: 100%;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: var(--sidebar-bg) !important;
+    padding: 0.5rem 0;
+}
+.sidebar-footer .list-group-item {
+    font-size: 0.9rem;
+}
+
+/* ==================== CONTEÚDO PRINCIPAL ==================== */
+#page-content-wrapper {
+    min-width: calc(100% - 250px);
+    background-color: var(--content-bg);
+    flex-grow: 1;
+}
+
+/* ==================== CARDS E TABELAS ==================== */
+.action-card {
+    border: 1px solid #ddd;
+    border-left: 5px solid var(--primary-color);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    background-color: white;
+    border-radius: 0.5rem;
+}
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+.card-title {
+    color: var(--secondary-color);
+}
+.card-text {
+    color: #6c757d;
+}
+.table-dark-custom {
+    background-color: var(--secondary-color) !important;
+    color: white !important;
+}
+.table-dark-custom th {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ==================== RESPONSIVIDADE ==================== */
+
+/* --- Tablets (até 992px) --- */
+@media (max-width: 992px) {
+    #sidebar-wrapper {
+        width: 180px;
+    }
+    #page-content-wrapper {
+        min-width: calc(100% - 180px);
+    }
+}
+
+/* --- Celulares (até 768px) --- */
+@media (max-width: 768px) {
+    #wrapper {
+        flex-direction: column;
+    }
+
+    /* Sidebar escondida inicialmente */
+    #sidebar-wrapper {
+        position: fixed;
+        top: 0;
+        left: -220px;
+        width: 200px;
+        height: 100%;
+        z-index: 2000;
+        transition: left 0.3s ease;
+        z-index: 2000; /* Fica acima do navbar */
+    }
+
+    /* Quando o menu abre */
+    body.sidebar-open #sidebar-wrapper {
+        left: 0;
+    }
+
+    /* Ajusta o conteúdo quando o menu está aberto */
+    #page-content-wrapper {
+        min-width: 100%;
+        transition: filter 0.3s ease;
+    }
+
+    body.sidebar-open #page-content-wrapper {
+        filter: brightness(0.6);
+        pointer-events: none; /* evita clique no conteúdo */
+    }
+
+    /* Navbar mantém visibilidade */
+    #top-navbar.navbar {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+
+    /* Ajusta margens para o conteúdo não ficar sob a navbar */
+    #page-content-wrapper {
+        padding-top: 70px;
+    }
+
+    /* Estilos dos cards mais compactos */
+    .action-card {
+        margin-bottom: 15px;
+    }
+}
+
+/* --- Telas muito pequenas (até 480px) --- */
+@media (max-width: 480px) {
+    .login-container {
+        padding: 30px;
+    }
+
+    .logo-text {
+        font-size: 20px;
+    }
+
+    .btn-login {
+        font-size: 15px;
+    }
+
+    #sidebar-wrapper {
+        width: 180px;
+    }
+
+    .list-group-item {
+        padding: 8px 10px !important;
+        font-size: 14px;
+    }
+
+    .navbar-logo-text {
+        font-size: 1.2rem;
+    }
+
+    .user-avatar-small {
+        font-size: 20px;
+    }
+}
+
+/* Estilos para telas menores (celular) */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        height: auto;
+        text-align: left;
+        padding: 10px;
+    }
+
+    .wrapper {
+        width: 90%;
+        max-width: none;
+        margin: 20px auto;
+        padding: 20px;
+        box-shadow: none;
+        border-radius: 4px;
+    }
+
+    .degrade {
+        height: 80px;
+        width: 100%;
+        top: 0;
+        left: 0;
+    }
+
+    button {
+        font-size: 14px;
+        padding: 12px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+}
+
+
