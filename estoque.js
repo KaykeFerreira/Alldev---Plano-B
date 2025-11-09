@@ -120,6 +120,70 @@ async function carregarProdutos() {
 }
 
 // =======================
+// PESQUISAR PRODUTOS
+// =======================
+document.getElementById("btnBuscar").addEventListener("click", async () => {
+  const termo = document.getElementById("pesquisa").value.trim().toLowerCase();
+  await pesquisarProdutos(termo);
+});
+
+// Permite buscar também pressionando Enter no campo
+document.getElementById("pesquisa").addEventListener("keyup", async (e) => {
+  if (e.key === "Enter") {
+    const termo = e.target.value.trim().toLowerCase();
+    await pesquisarProdutos(termo);
+  }
+});
+
+// Função para filtrar produtos
+async function pesquisarProdutos(termo) {
+  const tabela = document.getElementById("tabela-produtos");
+  tabela.innerHTML = `
+    <tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>
+  `;
+
+  try {
+    const produtosSnap = await getDocs(collection(db, "produtos"));
+    let html = "";
+
+    produtosSnap.forEach((docSnap) => {
+      const p = docSnap.data();
+      const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
+
+      if (texto.includes(termo)) {
+        html += `
+          <tr>
+            <td>${p.codigo}</td>
+            <td>${p.nome}</td>
+            <td>${p.marca}</td>
+            <td>${p.quantidade}</td>
+            <td>
+              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docSnap.id}">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger btn-excluir" data-id="${docSnap.id}">
+                <i class="fas fa-trash-alt"></i> Excluir
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+    });
+
+    tabela.innerHTML = html || `
+      <tr><td colspan="5" class="text-center text-muted">Nenhum produto encontrado.</td></tr>
+    `;
+
+    conectarBotoes(); // reconecta eventos de editar/excluir
+  } catch (erro) {
+    console.error("Erro ao buscar produtos:", erro);
+    tabela.innerHTML = `
+      <tr><td colspan="5" class="text-center text-danger">Erro ao buscar produtos.</td></tr>
+    `;
+  }
+}
+
+// =======================
 // CONECTA BOTÕES EDITAR / EXCLUIR
 // =======================
 function conectarBotoes() {
