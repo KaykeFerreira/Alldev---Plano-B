@@ -1,147 +1,153 @@
+// Importa os módulos necessários do Firebase
 import { db } from "./firebase-config.js";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  updateDoc,
-  doc,
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  deleteDoc, 
+  doc, 
+  updateDoc 
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referência da coleção
+// Referência para a coleção de fornecedores no Firestore
 const fornecedoresRef = collection(db, "fornecedores");
 
-// Campos
-const tabela = document.getElementById("tabela-fornecedores");
-const pesquisa = document.getElementById("pesquisaFornecedor");
-const form = document.getElementById("form-fornecedor");
-const btnSalvar = document.getElementById("btnSalvarFornecedor");
+// Elementos do formulário
+const formFornecedor = document.getElementById("formFornecedor");
+const tabelaFornecedores = document.getElementById("tabelaFornecedores");
+const btnSalvarFornecedor = document.getElementById("btnSalvarFornecedor");
+const pesquisaFornecedor = document.getElementById("pesquisaFornecedor");
 
-let idEditando = null;
+let editandoId = null;
 
-// Função para aplicar máscara de CNPJ
-function mascaraCNPJ(valor) {
-  return valor
-    .replace(/\D/g, "")
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2")
-    .substring(0, 18);
+// Função para validar e-mail
+function validarEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
 }
+
+// Máscara para CNPJ
+document.getElementById("fornCnpj").addEventListener("input", (e) => {
+  let value = e.target.value.replace(/\D/g, "").slice(0, 14);
+  value = value.replace(/^(\d{2})(\d)/, "$1.$2")
+               .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+               .replace(/\.(\d{3})(\d)/, ".$1/$2")
+               .replace(/(\d{4})(\d)/, "$1-$2");
+  e.target.value = value;
+});
 
 // Máscara para telefone
-function mascaraTelefone(valor) {
-  return valor
-    .replace(/\D/g, "")
-    .replace(/^(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2")
-    .substring(0, 15);
-}
-
-// Validação simples de email
-function validarEmail(email) {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
-}
-
-// Carregar fornecedores
-async function listarFornecedores(filtro = "") {
-  tabela.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Carregando...</td></tr>`;
-  const snap = await getDocs(fornecedoresRef);
-  let html = "";
-
-  snap.forEach((docItem) => {
-    const f = docItem.data();
-    if (
-      f.nome.toLowerCase().includes(filtro.toLowerCase()) ||
-      f.cnpj.toLowerCase().includes(filtro.toLowerCase())
-    ) {
-      html += `
-        <tr>
-          <td>${f.nome}</td>
-          <td>${f.cnpj}</td>
-          <td>${f.telefone}</td>
-          <td>${f.email}</td>
-          <td>
-            <button class="btn btn-sm btn-info me-2" onclick="editarFornecedor('${docItem.id}', '${f.nome}', '${f.cnpj}', '${f.telefone}', '${f.email}')">Editar</button>
-          </td>
-        </tr>`;
-    }
-  });
-
-  tabela.innerHTML =
-    html ||
-    `<tr><td colspan="5" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
-}
-
-// Evento de pesquisa
-pesquisa.addEventListener("input", (e) => listarFornecedores(e.target.value));
-
-// Evento de input (máscaras)
-document.getElementById("cnpj").addEventListener("input", (e) => {
-  e.target.value = mascaraCNPJ(e.target.value);
-});
-document.getElementById("telefone").addEventListener("input", (e) => {
-  e.target.value = mascaraTelefone(e.target.value);
+document.getElementById("fornTelefone").addEventListener("input", (e) => {
+  let value = e.target.value.replace(/\D/g, "").slice(0, 11);
+  if (value.length <= 10) {
+    value = value.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+  } else {
+    value = value.replace(/^(\d{2})(\d{5})(\d{0,4})$/, "($1) $2-$3");
+  }
+  e.target.value = value;
 });
 
-// Cadastrar ou editar fornecedor
-btnSalvar.addEventListener("click", async (e) => {
-  e.preventDefault();
+// Função para cadastrar ou editar fornecedor
+btnSalvarFornecedor.addEventListener("click", async () => {
+  const nome = document.getElementById("fornRazao").value.trim();
+  const cnpj = document.getElementById("fornCnpj").value.trim();
+  const telefone = document.getElementById("fornTelefone").value.trim();
+  const email = document.getElementById("fornEmail").value.trim();
 
-  const nome = document.getElementById("nome").value.trim();
-  const cnpj = document.getElementById("cnpj").value.trim();
-  const telefone = document.getElementById("telefone").value.trim();
-  const email = document.getElementById("email").value.trim();
-
+  // Validações
   if (!nome || !cnpj || !telefone || !email) {
-    alert("⚠️ Preencha todos os campos obrigatórios!");
+    alert("Preencha todos os campos!");
     return;
   }
 
   if (!validarEmail(email)) {
-    alert("❌ E-mail inválido!");
+    alert("E-mail inválido!");
     return;
   }
 
   try {
-    if (idEditando) {
-      const docRef = doc(db, "fornecedores", idEditando);
-      await updateDoc(docRef, { nome, cnpj, telefone, email });
-      alert("✏️ Fornecedor atualizado com sucesso!");
-      idEditando = null;
+    if (editandoId) {
+      await updateDoc(doc(db, "fornecedores", editandoId), { nome, cnpj, telefone, email });
+      alert("Fornecedor atualizado com sucesso!");
+      editandoId = null;
     } else {
-      await addDoc(fornecedoresRef, { nome, cnpj, telefone, email });
-      alert("✅ Fornecedor cadastrado com sucesso!");
+      await addDoc(fornecedoresRef, { nome, cnpj, telefone, email, criadoEm: new Date() });
+      alert("Fornecedor cadastrado com sucesso!");
     }
 
-    form.reset();
-    const modal = bootstrap.Modal.getInstance(
-      document.getElementById("modalCadastroFornecedor")
-    );
+    formFornecedor.reset();
+    const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
 
     listarFornecedores();
   } catch (erro) {
     console.error("Erro ao salvar fornecedor:", erro);
-    alert("❌ Erro ao salvar fornecedor. Veja o console.");
+    alert("Erro ao salvar fornecedor!");
   }
 });
 
-// Tornar função de edição global
-window.editarFornecedor = (id, nome, cnpj, telefone, email) => {
-  idEditando = id;
-  document.getElementById("nome").value = nome;
-  document.getElementById("cnpj").value = cnpj;
-  document.getElementById("telefone").value = telefone;
-  document.getElementById("email").value = email;
+// Função para listar fornecedores
+async function listarFornecedores() {
+  tabelaFornecedores.innerHTML = "<tr><td colspan='5' class='text-center text-muted'>Carregando...</td></tr>";
+  try {
+    const snapshot = await getDocs(fornecedoresRef);
+    let html = "";
+    snapshot.forEach((docItem) => {
+      const f = docItem.data();
+      html += `
+        <tr>
+          <td>${f.nome}</td>
+          <td>${f.cnpj}</td>
+          <td>${f.email}</td>
+          <td>${f.telefone}</td>
+          <td>
+            <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docItem.id}">Editar</button>
+            <button class="btn btn-sm btn-danger btn-excluir" data-id="${docItem.id}">Excluir</button>
+          </td>
+        </tr>
+      `;
+    });
+    tabelaFornecedores.innerHTML = html || "<tr><td colspan='5' class='text-center text-muted'>Nenhum fornecedor encontrado.</td></tr>";
 
-  const modal = new bootstrap.Modal(
-    document.getElementById("modalCadastroFornecedor")
-  );
-  modal.show();
-  document.getElementById("btnSalvarFornecedor").textContent = "Salvar Alterações";
-};
+    // Botão excluir
+    document.querySelectorAll(".btn-excluir").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.target.getAttribute("data-id");
+        if (confirm("Tem certeza que deseja excluir este fornecedor?")) {
+          await deleteDoc(doc(db, "fornecedores", id));
+          listarFornecedores();
+        }
+      });
+    });
 
-// Carregar ao iniciar
+    // Botão editar
+    document.querySelectorAll(".btn-editar").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.target.getAttribute("data-id");
+        const fData = snapshot.docs.find(d => d.id === id).data();
+        document.getElementById("fornRazao").value = fData.nome;
+        document.getElementById("fornCnpj").value = fData.cnpj;
+        document.getElementById("fornTelefone").value = fData.telefone;
+        document.getElementById("fornEmail").value = fData.email;
+        editandoId = id;
+        const modal = new bootstrap.Modal(document.getElementById("modalCadastroFornecedor"));
+        modal.show();
+      });
+    });
+  } catch (erro) {
+    console.error("Erro ao listar fornecedores:", erro);
+    tabelaFornecedores.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Erro ao carregar fornecedores.</td></tr>";
+  }
+}
+
+// Filtro de pesquisa
+pesquisaFornecedor.addEventListener("input", () => {
+  const filtro = pesquisaFornecedor.value.toLowerCase();
+  Array.from(tabelaFornecedores.rows).forEach(row => {
+    const nome = row.cells[0]?.textContent.toLowerCase();
+    row.style.display = nome?.includes(filtro) ? "" : "none";
+  });
+});
+
+// Inicializa lista ao carregar página
 document.addEventListener("DOMContentLoaded", listarFornecedores);
