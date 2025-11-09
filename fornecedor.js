@@ -13,67 +13,83 @@ const fornecedoresRef = collection(db, "fornecedores");
 
 // Elementos do formulário
 const formFornecedor = document.getElementById("formFornecedor");
-const listaFornecedores = document.getElementById("listaFornecedores");
+const tabelaFornecedores = document.getElementById("tabelaFornecedores");
 
 // Função para cadastrar fornecedor
 async function cadastrarFornecedor(event) {
   event.preventDefault();
 
-  const nome = formFornecedor.nome.value.trim();
-  const cnpj = formFornecedor.cnpj.value.trim();
-  const telefone = formFornecedor.telefone.value.trim();
+  const razao = document.getElementById("fornRazao").value.trim();
+  const cnpj = document.getElementById("fornCnpj").value.trim();
+  const email = document.getElementById("fornEmail").value.trim();
+  const telefone = document.getElementById("fornTelefone").value.trim();
 
-  if (!nome || !cnpj || !telefone) {
+  if (!razao || !cnpj || !email || !telefone) {
     alert("Por favor, preencha todos os campos!");
     return;
   }
 
   try {
     await addDoc(fornecedoresRef, {
-      nome,
+      razao,
       cnpj,
+      email,
       telefone,
       criadoEm: new Date()
     });
 
-    alert("Fornecedor cadastrado com sucesso!");
+    alert("✅ Fornecedor cadastrado com sucesso!");
     formFornecedor.reset();
     listarFornecedores();
   } catch (error) {
     console.error("Erro ao cadastrar fornecedor:", error);
-    alert("Erro ao cadastrar fornecedor!");
+    alert("❌ Erro ao cadastrar fornecedor!");
   }
 }
 
 // Função para listar fornecedores
 async function listarFornecedores() {
-  listaFornecedores.innerHTML = "";
+  tabelaFornecedores.innerHTML = `
+    <tr><td colspan="5" class="text-center text-muted">Carregando...</td></tr>
+  `;
 
   try {
     const snapshot = await getDocs(fornecedoresRef);
+    let html = "";
+
     snapshot.forEach((docItem) => {
       const fornecedor = docItem.data();
-      const item = document.createElement("li");
-      item.className = "fornecedor-item";
-      item.innerHTML = `
-        <strong>${fornecedor.nome}</strong><br>
-        CNPJ: ${fornecedor.cnpj}<br>
-        Telefone: ${fornecedor.telefone}<br>
-        <button data-id="${docItem.id}" class="btn-excluir">Excluir</button>
+      html += `
+        <tr>
+          <td>${fornecedor.razao}</td>
+          <td>${fornecedor.cnpj}</td>
+          <td>${fornecedor.email}</td>
+          <td>${fornecedor.telefone}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" data-id="${docItem.id}">
+              <i class="fas fa-trash"></i> Excluir
+            </button>
+          </td>
+        </tr>
       `;
-      listaFornecedores.appendChild(item);
     });
 
-    // Botões de exclusão
-    const botoesExcluir = document.querySelectorAll(".btn-excluir");
-    botoesExcluir.forEach((btn) => {
+    tabelaFornecedores.innerHTML = html || `
+      <tr><td colspan="5" class="text-center text-muted">Nenhum fornecedor cadastrado.</td></tr>
+    `;
+
+    // Adiciona os eventos de exclusão
+    document.querySelectorAll(".btn-danger").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const id = e.target.getAttribute("data-id");
+        const id = e.target.closest("button").dataset.id;
         await excluirFornecedor(id);
       });
     });
   } catch (error) {
     console.error("Erro ao listar fornecedores:", error);
+    tabelaFornecedores.innerHTML = `
+      <tr><td colspan="5" class="text-center text-danger">Erro ao carregar fornecedores.</td></tr>
+    `;
   }
 }
 
@@ -89,7 +105,7 @@ async function excluirFornecedor(id) {
 }
 
 // Eventos
-if (formFornecedor) formFornecedor.addEventListener("submit", cadastrarFornecedor);
+document.getElementById("btnSalvarFornecedor").addEventListener("click", cadastrarFornecedor);
 
 // Quando a página carregar, listar os fornecedores
 document.addEventListener("DOMContentLoaded", listarFornecedores);
