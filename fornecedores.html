@@ -93,6 +93,7 @@
             <table class="table table-striped table-hover">
               <thead class="table-dark-custom">
                 <tr>
+                  <th>ID</th> <!-- NOVO -->
                   <th>Razão Social</th>
                   <th>CNPJ</th>
                   <th>E-mail</th>
@@ -128,7 +129,7 @@
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">CNPJ</label>
-                <input type="text" class="form-control" id="fornCnpj" required />
+                <input type="text" class="form-control" id="fornCnpj" maxlength="18" required />
               </div>
             </div>
             <div class="row">
@@ -138,7 +139,7 @@
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">Telefone</label>
-                <input type="text" class="form-control" id="fornTelefone" required />
+                <input type="text" class="form-control" id="fornTelefone" maxlength="15" required />
               </div>
             </div>
           </form>
