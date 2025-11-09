@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCkz6E2D2qnUKE5M03ALu_uqCZK7JLQp3Y",
   authDomain: "alldev---plano-b.firebaseapp.com",
   projectId: "alldev---plano-b",
-  storageBucket: "alldev---plano-b.firebasestorage.app",
+  storageBucket: "alldev---plano-b.appspot.com",
   messagingSenderId: "766087243717",
   appId: "1:766087243717:web:d77ece57140c7d748b8dac",
   measurementId: "G-3PFEXYL9XC"
