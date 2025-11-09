@@ -20,7 +20,6 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom" id="top-navbar">
     <div class="container-fluid">
-      <!-- Botão menu (mobile) -->
       <button class="btn menu-toggle me-3" id="menu-toggle">
         <i class="fas fa-bars"></i>
       </button>
@@ -79,7 +78,7 @@
         <div class="card p-3 shadow-sm">
           <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
             <div class="input-group w-50">
-              <input type="text" class="form-control" placeholder="Pesquisar vendas...">
+              <input type="text" id="pesquisarVenda" class="form-control" placeholder="Pesquisar vendas...">
               <button class="btn btn-outline-secondary" type="button">
                 <i class="fas fa-search"></i>
               </button>
@@ -103,20 +102,19 @@
                   <th>Ações</th>
                 </tr>
               </thead>
-              <tbody id="listaVendas"></tbody>
+              <tbody id="tabelaVendas"></tbody>
             </table>
           </div>
         </div>
       </div>
     </div>
-
   </div>
 
   <!-- Modal de nova venda -->
   <div class="modal fade" id="modalCadastroVenda" tabindex="-1" aria-labelledby="modalCadastroVendaLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <form id="formVenda">
+        <form id="vendaForm">
           <div class="modal-header">
             <h5 class="modal-title">Cadastrar Venda</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -136,8 +134,8 @@
               <input type="number" class="form-control" id="quantidade" required min="1">
             </div>
             <div class="mb-3">
-              <label for="total" class="form-label">Total (R$)</label>
-              <input type="number" class="form-control" id="total" required min="0" step="0.01">
+              <label for="valor" class="form-label">Total (R$)</label>
+              <input type="number" class="form-control" id="valor" required min="0" step="0.01">
             </div>
           </div>
 
