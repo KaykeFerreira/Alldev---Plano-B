@@ -1,5 +1,5 @@
 // Importa os módulos necessários do Firebase
-import { db } from "./firebaseConfig.js";
+import { db } from "./firebase-config.js";
 import { 
   collection, 
   addDoc, 
