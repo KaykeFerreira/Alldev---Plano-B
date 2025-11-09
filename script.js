@@ -1,14 +1,17 @@
 // === Importações Firebase ===
 import { auth, db } from './firebase-config.js';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut 
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { 
-  collection, addDoc, getDocs 
+import {
+  collection,
+  addDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
+// === Inicialização do site ===
 document.addEventListener('DOMContentLoaded', () => {
 
   // --- LOGIN ---
@@ -16,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('usuario').value;
-      const senha = document.getElementById('senha').value;
+      const email = document.getElementById('usuario').value.trim();
+      const senha = document.getElementById('senha').value.trim();
 
       try {
         await signInWithEmailAndPassword(auth, email, senha);
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = 'index.html';
   };
 
-  // --- FUNÇÃO GERAL DE CADASTRO (Firestore) ---
+  // --- FUNÇÃO GERAL DE CADASTRO ---
   async function cadastrarEntidade(colecao, data, callback) {
     try {
       await addDoc(collection(db, colecao), data);
@@ -71,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- FUNÇÃO GERAL DE CARREGAR TABELAS (Firestore) ---
+  // --- FUNÇÃO GERAL DE CARREGAR TABELAS ---
   async function carregarTabela(colecao, tbodyId, colunas) {
     try {
       const querySnapshot = await getDocs(collection(db, colecao));
@@ -94,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- CADASTRO DE USUÁRIO (Firestore + Auth) ---
+  // --- USUÁRIOS ---
   document.querySelector("#btnSalvarUsuario")?.addEventListener("click", async () => {
     const form = document.querySelector("#formUsuario");
     const data = {
@@ -188,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   carregarTabela("estoque","tableEstoque", ["produto_id","quantidade"]);
 
-  // --- PEDIDOS ---
+  // --- PEDIDOS / VENDAS ---
   document.querySelector("#btnSalvarPedido")?.addEventListener("click", () => {
     const form = document.querySelector("#formPedido");
     const itens = [];
