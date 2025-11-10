@@ -1,37 +1,30 @@
-// Importa módulos do Firebase
 import { db } from "./firebase-config.js";
 import { 
   collection, addDoc, getDocs, deleteDoc, doc, updateDoc 
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referência à coleção
 const fornecedoresRef = collection(db, "fornecedores");
 
-// Elementos do DOM
 const formFornecedor = document.getElementById("formFornecedor");
 const tabelaFornecedores = document.getElementById("tabelaFornecedores");
 const btnSalvarFornecedor = document.getElementById("btnSalvarFornecedor");
 const inputPesquisa = document.getElementById("pesquisaFornecedor");
 
-// Controle de edição
 let fornecedorEditando = null;
 
-// ===================== Funções de formatação =====================
+// ===================== Formatação =====================
 function formatarCnpj(cnpj) {
   if (!cnpj) return "";
-  const v = cnpj.replace(/\D/g, "").padStart(14, "0");
+  const v = cnpj.replace(/\D/g, "").padStart(14, "0").slice(0,14);
   return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 }
 
 function formatarTelefone(tel) {
   if (!tel) return "";
-  const v = tel.replace(/\D/g, "");
-  if (v.length === 11) {
-    return v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-  } else if (v.length === 10) {
-    return v.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
-  }
-  return tel;
+  const v = tel.replace(/\D/g, "").slice(0,11);
+  if (v.length === 11) return v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  if (v.length === 10) return v.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
+  return v;
 }
 
 // ===================== Validação =====================
@@ -42,14 +35,14 @@ function validarCampos(fornecedor) {
     return false;
   }
 
-  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "");
+  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "").slice(0,14);
   if (cnpjLimpo.length !== 14) {
     alert("CNPJ deve ter 14 números!");
     return false;
   }
   fornecedor.cnpj = cnpjLimpo;
 
-  const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "");
+  const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "").slice(0,11);
   if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
     alert("Telefone deve ter 10 ou 11 números!");
     return false;
@@ -76,7 +69,7 @@ async function gerarIdAutomatico() {
   return "F" + String(maior + 1).padStart(3, "0");
 }
 
-// ===================== Salvar ou Editar =====================
+// ===================== Salvar =====================
 async function salvarFornecedor(event) {
   event.preventDefault();
 
@@ -97,7 +90,7 @@ async function salvarFornecedor(event) {
 
   try {
     if (!fornecedorEditando) {
-      // Verifica duplicidade de ID
+      // Verifica duplicidade
       const snapshot = await getDocs(fornecedoresRef);
       let idDuplicado = false;
       snapshot.forEach(docItem => {
@@ -115,9 +108,11 @@ async function salvarFornecedor(event) {
       fornecedorEditando = null;
     }
 
+    // Fechar modal e resetar formulário
     const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
     formFornecedor.reset();
+    document.getElementById("fornId").value = ""; // Limpar ID também
     listarFornecedores();
   } catch (erro) {
     console.error("Erro ao salvar fornecedor:", erro);
@@ -128,7 +123,6 @@ async function salvarFornecedor(event) {
 // ===================== Listar fornecedores =====================
 async function listarFornecedores() {
   tabelaFornecedores.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Carregando...</td></tr>`;
-
   try {
     const snapshot = await getDocs(fornecedoresRef);
     const pesquisa = inputPesquisa.value.trim().toLowerCase();
@@ -137,7 +131,6 @@ async function listarFornecedores() {
     snapshot.forEach(docItem => {
       const f = docItem.data();
       const idDoc = docItem.id;
-
       if (!f) return;
 
       if (
@@ -165,7 +158,7 @@ async function listarFornecedores() {
 
     tabelaFornecedores.innerHTML = html || `<tr><td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
 
-    // Excluir
+    // Botões excluir
     document.querySelectorAll(".btn-excluir").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.target.closest("button").dataset.id;
@@ -176,7 +169,7 @@ async function listarFornecedores() {
       });
     });
 
-    // Editar
+    // Botões editar
     document.querySelectorAll(".btn-editar").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.target.closest("button").dataset.id;
@@ -209,3 +202,12 @@ formFornecedor.addEventListener("submit", salvarFornecedor);
 btnSalvarFornecedor.addEventListener("click", salvarFornecedor);
 inputPesquisa.addEventListener("input", listarFornecedores);
 document.addEventListener("DOMContentLoaded", listarFornecedores);
+
+// ===================== Limitar input no modal =====================
+document.getElementById("fornCnpj").addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g,"").slice(0,14);
+});
+
+document.getElementById("fornTelefone").addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g,"").slice(0,11);
+});
