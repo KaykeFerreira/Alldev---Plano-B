@@ -30,22 +30,25 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos
+// Carregar produtos em um select
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
     const snapshot = await getDocs(estoqueRef);
     snapshot.forEach(doc => {
         const p = doc.data();
-        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">${p.tipo || p.nome || 'Produto'} - ${doc.id}</option>`;
+        const nomeProduto = p.tipo || p.nome || "Produto";
+        const preco = p.preco || 0;
+        const quantidade = p.quantidade || 0;
+        select.innerHTML += `<option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">${nomeProduto} - ${doc.id}</option>`;
     });
 }
 
-// Adicionar item
+// Adicionar item na tabela
 async function adicionarItem() {
     const tbody = itensTable.querySelector("tbody");
     const tr = document.createElement("tr");
     tr.innerHTML = `
-        <td><select class="form-select produto-select"></select></td>
+        <td><select class="form-select produto-select"><option value="">Carregando...</option></select></td>
         <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
         <td><input type="text" class="form-control preco-input" value="0" disabled></td>
         <td class="subtotal">R$ 0.00</td>
@@ -56,38 +59,59 @@ async function adicionarItem() {
     const produtoSelect = tr.querySelector(".produto-select");
     await carregarProdutos(produtoSelect);
 
+    // Atualizar preço e subtotal ao selecionar produto
     produtoSelect.addEventListener("change", () => {
-        const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
-        tr.querySelector(".preco-input").value = preco.toFixed(2);
+        const optionSelecionada = produtoSelect.selectedOptions[0];
+        if (!optionSelecionada || !optionSelecionada.value) {
+            tr.querySelector(".preco-input").value = 0;
+        } else {
+            const preco = parseFloat(optionSelecionada.dataset.preco || 0);
+            tr.querySelector(".preco-input").value = preco.toFixed(2);
+        }
         atualizarSubtotal(tr);
     });
 
+    // Atualizar subtotal ao alterar quantidade
     tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
-    tr.querySelector(".btn-remove-item").addEventListener("click", () => { tr.remove(); calcularTotal(); });
+
+    // Remover item
+    tr.querySelector(".btn-remove-item").addEventListener("click", () => {
+        tr.remove();
+        calcularTotal();
+    });
 
     atualizarSubtotal(tr);
 }
 
-// Subtotal
+// Atualizar subtotal de um item
 function atualizarSubtotal(tr) {
     const qtd = parseFloat(tr.querySelector(".quantidade-input").value || 0);
     const preco = parseFloat(tr.querySelector(".preco-input").value || 0);
-    const estoqueDisponivel = parseFloat(tr.querySelector(".produto-select").selectedOptions[0]?.dataset.quant || 0);
 
+    const optionSelecionada = tr.querySelector(".produto-select").selectedOptions[0];
+    if (!optionSelecionada || !optionSelecionada.value) {
+        tr.querySelector(".subtotal").textContent = "R$ 0.00";
+        calcularTotal();
+        return;
+    }
+
+    const estoqueDisponivel = parseFloat(optionSelecionada.dataset.quant || 0);
     if (qtd > estoqueDisponivel) {
-        alert("Quantidade solicitada maior que o estoque disponível!");
+        alert(`Quantidade solicitada maior que o estoque disponível! Estoque: ${estoqueDisponivel}`);
         tr.querySelector(".quantidade-input").value = estoqueDisponivel;
     }
 
-    tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
+    const subtotal = parseFloat(tr.querySelector(".quantidade-input").value) * preco;
+    tr.querySelector(".subtotal").textContent = `R$ ${subtotal.toFixed(2)}`;
     calcularTotal();
 }
 
-// Total
+// Calcular total
 function calcularTotal() {
     let total = 0;
     itensTable.querySelectorAll("tr").forEach(tr => {
-        total += parseFloat(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
+        const subtotal = parseFloat(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
+        total += subtotal;
     });
     valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
@@ -114,7 +138,9 @@ async function finalizarVenda() {
 
     const itens = [];
     itensTable.querySelectorAll("tr").forEach(tr => {
-        const produtoId = tr.querySelector(".produto-select").value;
+        const produtoSelect = tr.querySelector(".produto-select");
+        if (!produtoSelect.value) return; // ignora linhas sem produto selecionado
+        const produtoId = produtoSelect.value;
         const qtd = parseInt(tr.querySelector(".quantidade-input").value);
         const preco = parseFloat(tr.querySelector(".preco-input").value);
         itens.push({ produtoId, qtd, preco });
@@ -136,5 +162,5 @@ btnFinalizar.addEventListener("click", finalizarVenda);
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarClientes();
     carregarStatus();
-    await adicionarItem();
+    await adicionarItem(); // adiciona uma linha inicial
 });
