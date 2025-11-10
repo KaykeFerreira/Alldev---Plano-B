@@ -23,14 +23,12 @@ let fornecedorEditando = null;
 
 // Função para validar campos
 function validarCampos(fornecedor) {
-  // Validar email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(fornecedor.email)) {
     alert("Digite um e-mail válido!");
     return false;
   }
 
-  // Validar CNPJ (somente números, até 14 dígitos)
   const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "");
   if (cnpjLimpo.length !== 14) {
     alert("CNPJ deve ter 14 números!");
@@ -38,7 +36,6 @@ function validarCampos(fornecedor) {
   }
   fornecedor.cnpj = cnpjLimpo;
 
-  // Validar telefone (somente números, até 11 dígitos)
   const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "");
   if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
     alert("Telefone deve ter 10 ou 11 números!");
@@ -46,7 +43,6 @@ function validarCampos(fornecedor) {
   }
   fornecedor.telefone = telefoneLimpo;
 
-  // Validar ID (somente números)
   if (!fornecedor.id || isNaN(fornecedor.id)) {
     alert("Digite um ID válido!");
     return false;
@@ -67,7 +63,7 @@ async function salvarFornecedor(event) {
     telefone: document.getElementById("fornTelefone").value.trim()
   };
 
-  if (!fornecedor.razao || !fornecedor.cnpj || !fornecedor.email || !fornecedor.telefone || !fornecedor.id) {
+  if (!fornecedor.id || !fornecedor.razao || !fornecedor.cnpj || !fornecedor.email || !fornecedor.telefone) {
     alert("Preencha todos os campos!");
     return;
   }
@@ -75,13 +71,16 @@ async function salvarFornecedor(event) {
   if (!validarCampos(fornecedor)) return;
 
   try {
-    // Verificar se o ID já existe
     const snapshot = await getDocs(fornecedoresRef);
     let idDuplicado = false;
 
     snapshot.forEach(docItem => {
       const data = docItem.data();
       if (!fornecedorEditando && data.id === fornecedor.id) {
+        idDuplicado = true;
+      }
+      // se estiver editando, verificar se outro fornecedor já tem esse ID
+      if (fornecedorEditando && data.id === fornecedor.id && docItem.id !== fornecedorEditando) {
         idDuplicado = true;
       }
     });
@@ -92,15 +91,12 @@ async function salvarFornecedor(event) {
     }
 
     if (fornecedorEditando) {
-      // Editar fornecedor existente
       await updateDoc(doc(db, "fornecedores", fornecedorEditando), fornecedor);
       fornecedorEditando = null;
     } else {
-      // Novo fornecedor
       await addDoc(fornecedoresRef, fornecedor);
     }
 
-    // Fechar modal automaticamente
     const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
 
@@ -125,14 +121,14 @@ async function listarFornecedores() {
       const f = docItem.data();
       const idDoc = docItem.id;
 
-      // Filtrar por pesquisa
-      if (
-        f.razao.toLowerCase().includes(pesquisa) ||
-        f.cnpj.includes(pesquisa) ||
-        f.email.toLowerCase().includes(pesquisa) ||
-        f.telefone.includes(pesquisa) ||
-        f.id.includes(pesquisa)
-      ) {
+      // Garantir que campos existam
+      const razao = f.razao?.toLowerCase() || "";
+      const cnpj = f.cnpj || "";
+      const email = f.email?.toLowerCase() || "";
+      const telefone = f.telefone || "";
+      const id = f.id || "";
+
+      if (razao.includes(pesquisa) || cnpj.includes(pesquisa) || email.includes(pesquisa) || telefone.includes(pesquisa) || id.includes(pesquisa)) {
         html += `
           <tr>
             <td>${f.razao}</td>
