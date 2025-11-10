@@ -36,18 +36,21 @@ function carregarStatus() {
 // Carregar produtos
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
-    const snapshot = await getDocs(estoqueRef);
-    snapshot.forEach(doc => {
-        const p = doc.data();
-        const quantidade = parseInt(p.quantidade || 0);
-        const preco = parseFloat(p.preco || 0);
-        const nomeProduto = p.nome || p.tipo || "Produto";
-
-        if (quantidade > 0) {
-            select.innerHTML += `<option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">${nomeProduto} - ${doc.id}</option>`;
+    try {
+        const snapshot = await getDocs(estoqueRef);
+        if (snapshot.empty) {
+            console.log("Nenhum produto encontrado no Firestore!");
         }
-    });
+        snapshot.forEach(doc => {
+            const p = doc.data();
+            console.log("Produto encontrado:", p.nome, p.quantidade);
+            select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">${p.nome} - ${doc.id}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar produtos:", error);
+    }
 }
+
 
 // Adicionar item na tabela
 async function adicionarItem() {
