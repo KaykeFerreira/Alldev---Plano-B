@@ -12,7 +12,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom" id="top-navbar">
         <div class="container-fluid">
-            <button class="btn menu-toggle me-3" id="menu-toggle">
+            <button class="btn menu-toggle me-3 d-lg-none" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
             <div class="navbar-logo-text">
@@ -87,8 +87,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- vendas já cadastradas -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -96,7 +95,6 @@
         </div>
     </div>
 
-    <!-- Modal Cadastro Venda -->
     <div class="modal fade" id="modalCadastroVenda" tabindex="-1" aria-labelledby="modalCadastroVendaLabel" aria-hidden="true">
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -125,6 +123,15 @@
                 <h5 class="mt-4"><i class="fas fa-list"></i> Itens do Pedido</h5>
                 <div class="border p-3 mb-3">
                     <table class="table table-sm" id="itens-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Produto</th>
+                                <th style="width: 15%;">Quantidade</th>
+                                <th style="width: 15%;">Preço Unit.</th>
+                                <th style="width: 20%;">Subtotal</th>
+                                <th style="width: 10%;">Ação</th>
+                            </tr>
+                        </thead>
                         <tbody></tbody>
                     </table>
                     <button type="button" class="btn btn-success" id="btn-adicionar-item"><i class="fas fa-plus"></i> Adicionar Item</button>
@@ -157,5 +164,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="vendas.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toggleButton = document.getElementById("menu-toggle");
+
+            if (toggleButton) {
+                toggleButton.addEventListener("click", function () {
+                    document.body.classList.toggle("sidebar-open");
+                });
+            }
+        });
+    </script>
 </body>
 </html>
