@@ -1,7 +1,5 @@
 import { db } from "./firebase-config.js";
-import { 
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc 
-} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const fornecedoresRef = collection(db, "fornecedores");
 
@@ -12,22 +10,21 @@ const inputPesquisa = document.getElementById("pesquisaFornecedor");
 
 let fornecedorEditando = null;
 
-// ===================== Formatação =====================
+// ================= FORMATAÇÃO =================
 function formatarCnpj(cnpj) {
-  if (!cnpj) return "";
-  const v = cnpj.replace(/\D/g, "").padStart(14, "0").slice(0,14);
+  const v = cnpj.replace(/\D/g, "").slice(0, 14);
+  if (v.length < 14) return v;
   return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 }
 
 function formatarTelefone(tel) {
-  if (!tel) return "";
-  const v = tel.replace(/\D/g, "").slice(0,11);
+  const v = tel.replace(/\D/g, "").slice(0, 11);
   if (v.length === 11) return v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
   if (v.length === 10) return v.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
   return v;
 }
 
-// ===================== Validação =====================
+// ================= VALIDAÇÃO =================
 function validarCampos(fornecedor) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(fornecedor.email)) {
@@ -35,29 +32,24 @@ function validarCampos(fornecedor) {
     return false;
   }
 
-  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "").slice(0,14);
+  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "").slice(0, 14);
   if (cnpjLimpo.length !== 14) {
     alert("CNPJ deve ter 14 números!");
     return false;
   }
   fornecedor.cnpj = cnpjLimpo;
 
-  const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "").slice(0,11);
+  const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "").slice(0, 11);
   if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
     alert("Telefone deve ter 10 ou 11 números!");
     return false;
   }
   fornecedor.telefone = telefoneLimpo;
 
-  if (!fornecedor.id) {
-    alert("ID inválido!");
-    return false;
-  }
-
   return true;
 }
 
-// ===================== Gerar ID automático =====================
+// ================= GERAR ID AUTOMÁTICO =================
 async function gerarIdAutomatico() {
   const snapshot = await getDocs(fornecedoresRef);
   let ids = [];
@@ -69,7 +61,7 @@ async function gerarIdAutomatico() {
   return "F" + String(maior + 1).padStart(3, "0");
 }
 
-// ===================== Salvar =====================
+// ================= SALVAR FORNECEDOR =================
 async function salvarFornecedor(event) {
   event.preventDefault();
 
@@ -90,7 +82,6 @@ async function salvarFornecedor(event) {
 
   try {
     if (!fornecedorEditando) {
-      // Verifica duplicidade
       const snapshot = await getDocs(fornecedoresRef);
       let idDuplicado = false;
       snapshot.forEach(docItem => {
@@ -98,10 +89,9 @@ async function salvarFornecedor(event) {
         if (data.id === fornecedor.id) idDuplicado = true;
       });
       if (idDuplicado) {
-        alert("ID já existe! Escolha outro.");
+        alert("ID já existe! Gere outro ID.");
         return;
       }
-
       await addDoc(fornecedoresRef, fornecedor);
     } else {
       await updateDoc(doc(db, "fornecedores", fornecedorEditando), fornecedor);
@@ -112,21 +102,23 @@ async function salvarFornecedor(event) {
     const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
     formFornecedor.reset();
-    document.getElementById("fornId").value = ""; // Limpar ID também
+    document.getElementById("fornId").value = ""; // Limpar ID
     listarFornecedores();
+
   } catch (erro) {
     console.error("Erro ao salvar fornecedor:", erro);
     alert("Erro ao salvar fornecedor!");
   }
 }
 
-// ===================== Listar fornecedores =====================
+// ================= LISTAR FORNECEDORES =================
 async function listarFornecedores() {
   tabelaFornecedores.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Carregando...</td></tr>`;
+
   try {
     const snapshot = await getDocs(fornecedoresRef);
     const pesquisa = inputPesquisa.value.trim().toLowerCase();
-    let html = "";
+    let html = [];
 
     snapshot.forEach(docItem => {
       const f = docItem.data();
@@ -140,7 +132,7 @@ async function listarFornecedores() {
         (f.telefone && f.telefone.includes(pesquisa)) ||
         (f.id && f.id.toLowerCase().includes(pesquisa))
       ) {
-        html += `
+        html.push(`
           <tr>
             <td>${f.id}</td>
             <td>${f.razao}</td>
@@ -152,17 +144,24 @@ async function listarFornecedores() {
               <button class="btn btn-sm btn-danger btn-excluir" data-id="${idDoc}"><i class="fas fa-trash-alt"></i> Excluir</button>
             </td>
           </tr>
-        `;
+        `);
       }
     });
 
-    tabelaFornecedores.innerHTML = html || `<tr><td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
+    // Ordenar pelo ID crescente
+    html.sort((a,b) => {
+      const idA = parseInt(a.match(/<td>F(\d{3})<\/td>/)[1]);
+      const idB = parseInt(b.match(/<td>F(\d{3})<\/td>/)[1]);
+      return idA - idB;
+    });
+
+    tabelaFornecedores.innerHTML = html.join('') || `<tr><td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
 
     // Botões excluir
     document.querySelectorAll(".btn-excluir").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", async e => {
         const id = e.target.closest("button").dataset.id;
-        if (confirm("Tem certeza que deseja excluir este fornecedor?")) {
+        if (confirm("Deseja excluir este fornecedor?")) {
           await deleteDoc(doc(db, "fornecedores", id));
           listarFornecedores();
         }
@@ -171,7 +170,7 @@ async function listarFornecedores() {
 
     // Botões editar
     document.querySelectorAll(".btn-editar").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", async e => {
         const id = e.target.closest("button").dataset.id;
         const snapshot = await getDocs(fornecedoresRef);
         snapshot.forEach(docItem => {
@@ -197,13 +196,13 @@ async function listarFornecedores() {
   }
 }
 
-// ===================== Eventos =====================
+// ================= EVENTOS =================
 formFornecedor.addEventListener("submit", salvarFornecedor);
 btnSalvarFornecedor.addEventListener("click", salvarFornecedor);
 inputPesquisa.addEventListener("input", listarFornecedores);
 document.addEventListener("DOMContentLoaded", listarFornecedores);
 
-// ===================== Limitar input no modal =====================
+// ================= LIMITAR INPUT =================
 document.getElementById("fornCnpj").addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g,"").slice(0,14);
 });
