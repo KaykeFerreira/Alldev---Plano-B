@@ -1,4 +1,3 @@
-// vendas.js
 import { db } from "./firebase-config.js";
 import { collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
@@ -14,12 +13,6 @@ const btnAdicionarItem = document.getElementById("btn-adicionar-item");
 const btnFinalizar = document.getElementById("btn-finalizar-venda");
 const itensTable = document.getElementById("itens-table");
 const valorTotalInput = document.getElementById("valor-total");
-const tabelaVendasBody = document.querySelector("table tbody");
-
-// Array de itens
-let itensVenda = [];
-
-// -------------------- Funções -------------------- //
 
 // Carregar clientes
 async function carregarClientes() {
@@ -39,24 +32,14 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos
+// Carregar produtos em um select
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
     const snapshot = await getDocs(estoqueRef);
-    if (snapshot.empty) {
-        select.innerHTML = `<option value="">Nenhum produto cadastrado</option>`;
-        return;
-    }
     snapshot.forEach(doc => {
         const p = doc.data();
-        const nomeProduto = p.tipo || p.nome || "Produto";
-        const preco = p.preco || 0;
-        const quantidade = p.quantidade || 0;
-        select.innerHTML += `
-            <option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">
-                ${nomeProduto} - ${doc.id}
-            </option>
-        `;
+        // Ajuste: campos corretos do Firestore
+        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">${p.tipo || p.nome || "Produto"} - ${doc.id}</option>`;
     });
 }
 
@@ -79,12 +62,18 @@ async function adicionarItem() {
 
     // Atualizar preço ao selecionar produto
     produtoSelect.addEventListener("change", () => {
-        const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
+        const opcaoSelecionada = produtoSelect.selectedOptions[0];
+        if (!opcaoSelecionada || !opcaoSelecionada.value) {
+            tr.querySelector(".preco-input").value = 0;
+            atualizarSubtotal(tr);
+            return;
+        }
+        const preco = parseFloat(opcaoSelecionada.dataset.preco || 0);
         tr.querySelector(".preco-input").value = preco.toFixed(2);
         atualizarSubtotal(tr);
     });
 
-    // Atualizar subtotal ao mudar quantidade
+    // Atualizar subtotal ao alterar quantidade
     tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
 
     // Remover item
@@ -98,11 +87,17 @@ async function adicionarItem() {
 
 // Atualizar subtotal de um item
 function atualizarSubtotal(tr) {
+    const select = tr.querySelector(".produto-select");
+    if (!select.value) {
+        tr.querySelector(".subtotal").textContent = "R$ 0.00";
+        calcularTotal();
+        return;
+    }
+
     const qtd = parseFloat(tr.querySelector(".quantidade-input").value || 0);
     const preco = parseFloat(tr.querySelector(".preco-input").value || 0);
+    const estoqueDisponivel = parseFloat(select.selectedOptions[0]?.dataset.quant || 0);
 
-    // Valida estoque
-    const estoqueDisponivel = parseFloat(tr.querySelector(".produto-select").selectedOptions[0]?.dataset.quant || 0);
     if (qtd > estoqueDisponivel) {
         alert("Quantidade solicitada maior que o estoque disponível!");
         tr.querySelector(".quantidade-input").value = estoqueDisponivel;
@@ -143,7 +138,9 @@ async function finalizarVenda() {
 
     const itens = [];
     itensTable.querySelectorAll("tr").forEach(tr => {
-        const produtoId = tr.querySelector(".produto-select").value;
+        const select = tr.querySelector(".produto-select");
+        if (!select.value) return;
+        const produtoId = select.value;
         const qtd = parseInt(tr.querySelector(".quantidade-input").value);
         const preco = parseFloat(tr.querySelector(".preco-input").value);
         itens.push({ produtoId, qtd, preco });
@@ -154,46 +151,25 @@ async function finalizarVenda() {
 
     await addDoc(vendasRef, venda);
     alert("Venda cadastrada com sucesso!");
-    await carregarVendas(); // Atualiza tabela após cadastro
-    // Limpa o formulário
+
+    // Fecha modal
+    const modalEl = document.getElementById('modalCadastroVenda');
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    modal.hide();
+
+    // Limpa tabela e total
     itensTable.querySelector("tbody").innerHTML = "";
-    await adicionarItem();
     valorTotalInput.value = "R$ 0.00";
+    await adicionarItem();
 }
 
-// Carregar vendas na tabela principal
-async function carregarVendas() {
-    tabelaVendasBody.innerHTML = "";
-    const snapshot = await getDocs(vendasRef);
-    if (snapshot.empty) {
-        tabelaVendasBody.innerHTML = `<tr><td colspan="6">Nenhuma venda cadastrada</td></tr>`;
-        return;
-    }
-    snapshot.forEach(doc => {
-        const v = doc.data();
-        tabelaVendasBody.innerHTML += `
-            <tr>
-                <td>${v.id}</td>
-                <td>${v.cliente}</td>
-                <td>${v.data}</td>
-                <td>${v.status}</td>
-                <td>R$ ${v.total.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-sm btn-info">Detalhes</button>
-                </td>
-            </tr>
-        `;
-    });
-}
-
-// -------------------- Eventos -------------------- //
+// Eventos
 btnAdicionarItem.addEventListener("click", adicionarItem);
 btnFinalizar.addEventListener("click", finalizarVenda);
 
-// -------------------- Inicialização -------------------- //
+// Inicialização
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarClientes();
     carregarStatus();
     await adicionarItem();
-    await carregarVendas();
 });
