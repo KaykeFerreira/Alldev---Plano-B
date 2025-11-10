@@ -1,56 +1,61 @@
-// Importa Firebase
 import { db } from "./firebase-config.js";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referência da coleção clientes
 const clientesRef = collection(db, "clientes");
 
-// Elementos
-const formCliente = document.getElementById("formCliente");
-const tabelaClientes = document.querySelector("#tableClientes tbody");
+const tabelaClientes = document.getElementById("tabelaClientes");
 const btnSalvarCliente = document.getElementById("btnSalvarCliente");
-const inputPesquisa = document.querySelector('input[placeholder="Pesquisar clientes..."]');
+const inputPesquisa = document.getElementById("pesquisaCliente");
 
-// Variável de edição
 let clienteEditando = null;
 
 // Função de validação
 function validarCampos(cliente) {
+  if (!cliente.id || isNaN(cliente.id.replace(/\D/g,''))) { alert("ID inválido!"); return false; }
+  if (!cliente.nome) { alert("Nome obrigatório!"); return false; }
+
+  const cpfCnpj = cliente.cpfCnpj.replace(/\D/g,'');
+  if (!(cpfCnpj.length === 11 || cpfCnpj.length === 14)) { alert("CPF deve ter 11 e CNPJ 14 números!"); return false; }
+  cliente.cpfCnpj = cpfCnpj;
+
+  const tel = cliente.telefone.replace(/\D/g,'');
+  if (tel.length < 10 || tel.length > 11) { alert("Telefone deve ter 10 ou 11 números!"); return false; }
+  cliente.telefone = tel;
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(cliente.email)) {
-    alert("Digite um e-mail válido!");
-    return false;
-  }
+  if (!emailRegex.test(cliente.email)) { alert("Email inválido!"); return false; }
 
-  const telefoneLimpo = cliente.telefone.replace(/\D/g, "");
-  if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-    alert("Telefone deve ter 10 ou 11 números!");
-    return false;
-  }
-  cliente.telefone = telefoneLimpo;
-
-  if (!cliente.id || isNaN(cliente.id)) {
-    alert("Digite um ID válido!");
-    return false;
-  }
+  const cep = cliente.cep.replace(/\D/g,'');
+  if (cep.length !== 8) { alert("CEP deve ter 8 números!"); return false; }
+  cliente.cep = cep;
 
   return true;
 }
 
-// Função para salvar ou editar cliente
+// Função para buscar endereço pelo CEP
+async function buscarEndereco(cepInput, enderecoInput){
+  const cep = cepInput.value.replace(/\D/g,'');
+  if (cep.length !== 8) return;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+    if (!data.erro) {
+      enderecoInput.value = `${data.logradouro}, ${data.bairro}, ${data.localidade}-${data.uf}`;
+    }
+  } catch(e) { console.error("Erro ao buscar CEP", e); }
+}
+
+// Salvar ou editar cliente
 async function salvarCliente() {
   const cliente = {
-    id: document.getElementById("clienteId")?.value.trim() || "",
-    nome: document.getElementById("nome").value.trim(),
-    telefone: document.getElementById("telefone").value.trim(),
-    email: document.getElementById("email").value.trim(),
-    endereco: document.getElementById("endereco").value.trim()
+    id: document.getElementById("cliId").value.trim(),
+    nome: document.getElementById("cliNome").value.trim(),
+    cpfCnpj: document.getElementById("cliCpfCnpj").value.trim(),
+    telefone: document.getElementById("cliTelefone").value.trim(),
+    cep: document.getElementById("cliCep").value.trim(),
+    endereco: document.getElementById("cliEndereco").value.trim(),
+    email: document.getElementById("cliEmail").value.trim()
   };
-
-  if (!cliente.nome || !cliente.telefone || !cliente.email || !cliente.id) {
-    alert("Preencha todos os campos!");
-    return;
-  }
 
   if (!validarCampos(cliente)) return;
 
@@ -59,38 +64,30 @@ async function salvarCliente() {
     let idDuplicado = false;
 
     snapshot.forEach(docItem => {
-      const data = docItem.data();
-      if (!clienteEditando && data.id === cliente.id) {
-        idDuplicado = true;
-      }
+      const c = docItem.data();
+      if (!clienteEditando && c.id === cliente.id) idDuplicado = true;
+      if (clienteEditando && c.id === cliente.id && docItem.id !== clienteEditando) idDuplicado = true;
     });
 
-    if (idDuplicado) {
-      alert("ID já existe! Escolha outro ID.");
-      return;
-    }
+    if (idDuplicado) { alert("ID já existe!"); return; }
 
     if (clienteEditando) {
-      await updateDoc(doc(db, "clientes", clienteEditando), cliente);
+      await updateDoc(doc(db,"clientes",clienteEditando), cliente);
       clienteEditando = null;
     } else {
       await addDoc(clientesRef, cliente);
     }
 
-    const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroCliente"));
-    modal.hide();
-    formCliente.reset();
-    carregarClientes();
-  } catch (erro) {
-    console.error("Erro ao salvar cliente:", erro);
-    alert("Erro ao salvar cliente!");
-  }
+    bootstrap.Modal.getInstance(document.getElementById("modalCadastroCliente")).hide();
+    document.getElementById("formCliente").reset();
+    listarClientes();
+  } catch(e){ console.error(e); alert("Erro ao salvar cliente!"); }
 }
 
-// Carregar clientes
-async function carregarClientes() {
-  tabelaClientes.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Carregando...</td></tr>`;
-  try {
+// Listar clientes
+async function listarClientes(){
+  tabelaClientes.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Carregando...</td></tr>`;
+  try{
     const snapshot = await getDocs(clientesRef);
     const pesquisa = inputPesquisa.value.trim().toLowerCase();
     let html = "";
@@ -100,83 +97,71 @@ async function carregarClientes() {
       const idDoc = docItem.id;
 
       if (
-        c.id.includes(pesquisa) ||
-        c.nome.toLowerCase().includes(pesquisa) ||
-        c.telefone.includes(pesquisa) ||
-        c.email.toLowerCase().includes(pesquisa) ||
-        c.endereco.toLowerCase().includes(pesquisa)
+        (c.id?.toLowerCase().includes(pesquisa)) ||
+        (c.nome?.toLowerCase().includes(pesquisa)) ||
+        (c.cpfCnpj?.includes(pesquisa)) ||
+        (c.telefone?.includes(pesquisa)) ||
+        (c.email?.toLowerCase().includes(pesquisa)) ||
+        (c.cep?.includes(pesquisa)) ||
+        (c.endereco?.toLowerCase().includes(pesquisa))
       ) {
-        html += `
-          <tr>
-            <td>${c.nome}</td>
-            <td>${c.telefone}</td>
-            <td>${c.email}</td>
-            <td>${c.endereco}</td>
-            <td>
-              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${idDoc}"><i class="fas fa-edit"></i> Editar</button>
-              <button class="btn btn-sm btn-danger btn-excluir" data-id="${idDoc}"><i class="fas fa-trash-alt"></i> Excluir</button>
-            </td>
-          </tr>
-        `;
+        html += `<tr>
+          <td>${c.id}</td>
+          <td>${c.nome}</td>
+          <td>${c.cpfCnpj}</td>
+          <td>${c.telefone}</td>
+          <td>${c.email}</td>
+          <td>${c.cep}</td>
+          <td>${c.endereco}</td>
+          <td>
+            <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${idDoc}"><i class="fas fa-edit"></i> Editar</button>
+            <button class="btn btn-sm btn-danger btn-excluir" data-id="${idDoc}"><i class="fas fa-trash-alt"></i> Excluir</button>
+          </td>
+        </tr>`;
       }
     });
 
-    tabelaClientes.innerHTML = html || `<tr><td colspan="5" class="text-center text-muted">Nenhum cliente encontrado.</td></tr>`;
+    tabelaClientes.innerHTML = html || `<tr><td colspan="8" class="text-center text-muted">Nenhum cliente encontrado.</td></tr>`;
 
-    // Exclusão
     document.querySelectorAll(".btn-excluir").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", async e=>{
         const id = e.target.closest("button").dataset.id;
-        if (confirm("Deseja excluir este cliente?")) {
-          await deleteDoc(doc(db, "clientes", id));
-          carregarClientes();
+        if(confirm("Deseja realmente excluir?")){
+          await deleteDoc(doc(db,"clientes",id));
+          listarClientes();
         }
       });
     });
 
-    // Edição
     document.querySelectorAll(".btn-editar").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", async e => {
         const id = e.target.closest("button").dataset.id;
         const snapshot = await getDocs(clientesRef);
-        snapshot.forEach(docItem => {
-          if (docItem.id === id) {
+        snapshot.forEach(docItem=>{
+          if(docItem.id===id){
             const c = docItem.data();
-            // Adiciona campo ID se não existir
-            if (!document.getElementById("clienteId")) {
-              const inputId = document.createElement("input");
-              inputId.type = "text";
-              inputId.id = "clienteId";
-              inputId.value = c.id;
-              inputId.className = "form-control mb-3";
-              inputId.placeholder = "ID do Cliente";
-              formCliente.prepend(inputId);
-            } else {
-              document.getElementById("clienteId").value = c.id;
-            }
-
-            document.getElementById("nome").value = c.nome;
-            document.getElementById("telefone").value = c.telefone;
-            document.getElementById("email").value = c.email;
-            document.getElementById("endereco").value = c.endereco;
-            clienteEditando = id;
-
-            const modal = new bootstrap.Modal(document.getElementById("modalCadastroCliente"));
-            modal.show();
+            document.getElementById("cliId").value=c.id;
+            document.getElementById("cliNome").value=c.nome;
+            document.getElementById("cliCpfCnpj").value=c.cpfCnpj;
+            document.getElementById("cliTelefone").value=c.telefone;
+            document.getElementById("cliCep").value=c.cep;
+            document.getElementById("cliEndereco").value=c.endereco;
+            document.getElementById("cliEmail").value=c.email;
+            clienteEditando=id;
+            new bootstrap.Modal(document.getElementById("modalCadastroCliente")).show();
           }
         });
       });
     });
 
-  } catch (erro) {
-    console.error("Erro ao carregar clientes:", erro);
-    tabelaClientes.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar clientes.</td></tr>`;
-  }
+  }catch(e){ console.error(e); tabelaClientes.innerHTML=`<tr><td colspan="8" class="text-center text-danger">Erro ao carregar clientes.</td></tr>`; }
 }
 
 // Eventos
 btnSalvarCliente.addEventListener("click", salvarCliente);
-inputPesquisa.addEventListener("input", carregarClientes);
+inputPesquisa.addEventListener("input", listarClientes);
+document.getElementById("cliCep").addEventListener("blur", ()=>{
+  buscarEndereco(document.getElementById("cliCep"), document.getElementById("cliEndereco"));
+});
 
-// Carregar ao abrir página
-document.addEventListener("DOMContentLoaded", carregarClientes);
+document.addEventListener("DOMContentLoaded", listarClientes);
