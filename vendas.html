@@ -12,20 +12,14 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom" id="top-navbar">
         <div class="container-fluid">
-            
-            <!-- Botão hamburguer (aparece só no celular) -->
             <button class="btn menu-toggle me-3" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-
             <div class="navbar-logo-text">
                 <img src="LogoAlldev.jpg" alt="AllDev Logo">
             </div>
-
             <div class="d-flex align-items-center">
-                <span class="navbar-text me-3">
-                    Admin
-                </span>
+                <span class="navbar-text me-3">Admin</span>
                 <div class="user-avatar-small">
                     <i class="fas fa-user-circle"></i> 
                 </div>
@@ -34,10 +28,8 @@
     </nav>
 
     <div class="d-flex" id="wrapper">
-
         <div class="bg-light border-end" id="sidebar-wrapper">
             <div class="sidebar-heading"></div> 
-            
             <div class="list-group list-group-flush">
                 <a href="dashboard.html" class="list-group-item list-group-item-action p-3">
                     <i class="fas fa-home"></i> Início
@@ -55,7 +47,6 @@
                     <i class="fas fa-shopping-cart"></i> Vendas
                 </a>
             </div>
-            
             <div class="sidebar-footer">
                 <a href="perfil.html" class="list-group-item list-group-item-action p-3">
                     <i class="fas fa-cog"></i> Perfil
@@ -67,20 +58,17 @@
         </div>
 
         <div id="page-content-wrapper">
-            
             <div class="container-fluid p-4">
                 <h2 class="mb-4">Vendas</h2>
 
                 <div class="card p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        
                         <div class="input-group w-50">
                             <input type="text" class="form-control" placeholder="Pesquisar vendas por código/cliente...">
                             <button class="btn btn-outline-secondary" type="button">
                                 <i class="fas fa-search"></i> Buscar
                             </button>
                         </div>
-                        
                         <button class="btn btn-primary" style="background-color: var(--primary-color); border: none;" data-bs-toggle="modal" data-bs-target="#modalCadastroVenda">
                             <i class="fas fa-plus"></i> Novo
                         </button>
@@ -99,26 +87,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>V001</td>
-                                    <td>Ana Silva</td>
-                                    <td>10/05/2024</td>
-                                    <td><span class="badge bg-success">Pago</span></td>
-                                    <td>R$ 150,00</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info me-2"><i class="fas fa-eye"></i> Detalhes</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>V002</td>
-                                    <td>João Doria</td>
-                                    <td>08/05/2024</td>
-                                    <td><span class="badge bg-warning text-dark">Pendente</span></td>
-                                    <td>R$ 450,90</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info me-2"><i class="fas fa-eye"></i> Detalhes</button>
-                                    </td>
-                                </tr>
+                                <!-- vendas já cadastradas -->
                             </tbody>
                         </table>
                     </div>
@@ -139,30 +108,57 @@
             <form>
                 <h5><i class="fas fa-info-circle"></i> Detalhes da Venda</h5>
                 <div class="row">
-                    <div class="col-md-4 mb-3"><label class="form-label">Cliente</label><select class="form-select"></select></div>
-                    <div class="col-md-4 mb-3"><label class="form-label">Data</label><input type="date" class="form-control"></div>
-                    <div class="col-md-4 mb-3"><label class="form-label">Status</label><select class="form-select"></select></div>
+                    <!-- select de cliente com id -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cliente</label>
+                        <select id="select-cliente" class="form-select"></select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control">
+                    </div>
+                    <!-- select de status com id -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Status</label>
+                        <select id="select-status" class="form-select"></select>
+                    </div>
                 </div>
 
                 <h5 class="mt-4"><i class="fas fa-list"></i> Itens do Pedido</h5>
                 <div class="border p-3 mb-3">
-                    <div class="row">
-                        <div class="col-md-5 mb-3"><label class="form-label">Produto</label><select class="form-select"></select></div>
-                        <div class="col-md-3 mb-3"><label class="form-label">Quantidade</label><input type="number" class="form-control"></div>
-                        <div class="col-md-3 mb-3"><label class="form-label">Preço Unitário</label><input type="text" class="form-control"></div>
+                    <div class="row" id="item-template">
+                        <!-- select de produto com id -->
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">Produto</label>
+                            <select class="form-select produto-select"></select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Quantidade</label>
+                            <input type="number" class="form-control quantidade-input">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Preço Unitário</label>
+                            <input type="text" class="form-control preco-input" disabled>
+                        </div>
                         <div class="col-md-1 d-flex align-items-end mb-3">
-                            <button type="button" class="btn btn-sm btn-success">
+                            <button type="button" class="btn btn-sm btn-success" id="btn-adicionar-item">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
                     </div>
-                    <table class="table table-sm mt-2"></table> 
+                    <table class="table table-sm mt-2" id="itens-table"></table> 
                 </div>
 
                 <h5 class="mt-4"><i class="fas fa-dollar-sign"></i> Resumo e Pagamento</h5>
                 <div class="row">
-                    <div class="col-md-6 mb-3"><label class="form-label">Desconto</label><input type="text" class="form-control"></div>
-                    <div class="col-md-6 mb-3"><label class="form-label">Valor Total</label><input type="text" class="form-control" disabled></div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Desconto</label>
+                        <input type="text" class="form-control" id="desconto">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Valor Total</label>
+                        <input type="text" class="form-control" id="valor-total" disabled>
+                    </div>
                 </div>
             </form>
           </div>
@@ -170,7 +166,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                 <i class="fas fa-times"></i> Fechar
             </button>
-            <button type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;">
+            <button type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;" id="btn-finalizar-venda">
                 <i class="fas fa-check"></i> Finalizar Venda
             </button>
           </div>
@@ -180,7 +176,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // controle do menu mobile
         const toggleButton = document.getElementById("menu-toggle");
         toggleButton.addEventListener("click", () => {
             document.body.classList.toggle("sidebar-open");
@@ -191,5 +186,9 @@
             }
         });
     </script>
+
+    <!-- script para vendas -->
+    <script type="module" src="vendas.js"></script>
+
 </body>
 </html>
