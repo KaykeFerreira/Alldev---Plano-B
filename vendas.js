@@ -7,7 +7,6 @@ const estoqueRef = collection(db, "estoque");
 const vendasRef = collection(db, "vendas");
 
 // Elementos do modal
-const modalVendaEl = document.getElementById('modalCadastroVenda');
 const selectCliente = document.getElementById("select-cliente");
 const selectStatus = document.getElementById("select-status");
 const btnAdicionarItem = document.getElementById("btn-adicionar-item");
@@ -33,7 +32,7 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos no select (sem alteração lógica, já estava certo)
+// Carregar produtos no select
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
     try {
@@ -57,28 +56,25 @@ async function carregarProdutos(select) {
     }
 }
 
-// Adicionar item na tabela (CORRIGIDO: Preenchimento inicial e estrutura)
+// Adicionar item na tabela
 async function adicionarItem() {
     const tbody = itensTable.querySelector("tbody");
-    
-    // Cria a nova linha da tabela
+    if (!tbody) {
+        itensTable.innerHTML = "<tbody></tbody>";
+    }
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
         <td><select class="form-select produto-select"></select></td>
         <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
-        <td><input type="text" class="form-control preco-input" value="0.00" disabled></td>
+        <td><input type="text" class="form-control preco-input" value="0" disabled></td>
         <td class="subtotal">R$ 0.00</td>
         <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
     `;
-    tbody.appendChild(tr);
+    itensTable.querySelector("tbody").appendChild(tr);
 
-    // Carrega os produtos no select recém-criado
     const produtoSelect = tr.querySelector(".produto-select");
     await carregarProdutos(produtoSelect);
-    
-    // Inicializa o preço do primeiro produto (se houver)
-    const precoInicial = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
-    tr.querySelector(".preco-input").value = precoInicial.toFixed(2);
 
     // Atualiza preço ao selecionar produto
     produtoSelect.addEventListener("change", () => {
@@ -96,11 +92,10 @@ async function adicionarItem() {
         calcularTotal();
     });
 
-    // Calcula o subtotal inicial
     atualizarSubtotal(tr);
 }
 
-// Atualizar subtotal (Mantido)
+// Atualizar subtotal
 function atualizarSubtotal(tr) {
     const select = tr.querySelector(".produto-select");
     if (!select.value) {
@@ -113,7 +108,6 @@ function atualizarSubtotal(tr) {
     const preco = Number(tr.querySelector(".preco-input").value || 0);
     const estoqueDisponivel = Number(select.selectedOptions[0]?.dataset.quant || 0);
 
-    // Limita a quantidade pelo estoque
     if (qtd > estoqueDisponivel) {
         qtd = estoqueDisponivel;
         tr.querySelector(".quantidade-input").value = qtd;
@@ -123,18 +117,16 @@ function atualizarSubtotal(tr) {
     calcularTotal();
 }
 
-// Calcular total (Mantido)
+// Calcular total
 function calcularTotal() {
     let total = 0;
     itensTable.querySelectorAll("tr").forEach(tr => {
-        // Pega o valor do subtotal na célula <td> e ignora o 'R$ '
-        const subtotalText = tr.querySelector(".subtotal").textContent;
-        total += Number(subtotalText.replace("R$ ", "")) || 0;
+        total += Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
     });
     valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
 
-// Gerar ID da venda (Mantido)
+// Gerar ID da venda
 async function gerarIdVenda() {
     const snapshot = await getDocs(vendasRef);
     let maior = 0;
@@ -145,7 +137,7 @@ async function gerarIdVenda() {
     return "V" + String(maior + 1).padStart(3, "0");
 }
 
-// Finalizar venda (Mantido)
+// Finalizar venda
 async function finalizarVenda() {
     const clienteId = selectCliente.value;
     const status = selectStatus.value;
@@ -156,29 +148,25 @@ async function finalizarVenda() {
 
     const itens = [];
     itensTable.querySelectorAll("tr").forEach(tr => {
-        const produtoSelect = tr.querySelector(".produto-select");
-        const produtoId = produtoSelect.value;
-        
-        if (produtoId) { // Só adiciona itens que foram realmente selecionados
-            const qtd = Number(tr.querySelector(".quantidade-input").value);
-            const preco = Number(tr.querySelector(".preco-input").value);
-            itens.push({ produtoId, qtd, preco, nome: produtoSelect.selectedOptions[0].textContent.split(' - ')[0] }); // Opcional: salva o nome
-        }
+        const produtoId = tr.querySelector(".produto-select").value;
+        if (!produtoId) return;
+        const qtd = Number(tr.querySelector(".quantidade-input").value);
+        const preco = Number(tr.querySelector(".preco-input").value);
+        itens.push({ produtoId, qtd, preco });
     });
-    
-    if (itens.length === 0) return alert("Nenhum produto válido foi selecionado.");
 
     const total = Number(valorTotalInput.value.replace("R$ ", ""));
-    const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total, timestamp: new Date() };
+    const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total };
 
     await addDoc(vendasRef, venda);
     alert("Venda cadastrada com sucesso!");
 
     // Fecha o modal corretamente
-    const modal = bootstrap.Modal.getOrCreateInstance(modalVendaEl);
+    const modalEl = document.getElementById('modalCadastroVenda');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.hide();
 
-    // Limpa itens e valor para novo uso
+    // Limpa itens e valor
     itensTable.querySelector("tbody").innerHTML = "";
     valorTotalInput.value = "";
     await adicionarItem(); // adiciona linha vazia novamente
@@ -190,15 +178,7 @@ btnFinalizar.addEventListener("click", finalizarVenda);
 
 // Inicialização
 document.addEventListener("DOMContentLoaded", async () => {
-    // CORREÇÃO: Usar um listener para carregar os dados somente quando o modal é aberto
-    modalVendaEl.addEventListener('show.bs.modal', async () => {
-        await carregarClientes();
-        carregarStatus();
-        itensTable.querySelector("tbody").innerHTML = ""; // Limpa itens antigos
-        await adicionarItem(); // Adiciona primeira linha
-    });
-
-    // Se o modal não abrir na inicialização, pelo menos carrega o básico:
     await carregarClientes();
     carregarStatus();
+    await adicionarItem(); // linha inicial
 });
