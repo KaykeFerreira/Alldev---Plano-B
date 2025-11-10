@@ -1,130 +1,149 @@
+// Importa os módulos necessários do Firebase
 import { db } from "./firebase-config.js";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
+// Referência para a coleção de fornecedores
 const fornecedoresRef = collection(db, "fornecedores");
 
+// Elementos do formulário
 const formFornecedor = document.getElementById("formFornecedor");
 const tabelaFornecedores = document.getElementById("tabelaFornecedores");
 const btnSalvarFornecedor = document.getElementById("btnSalvarFornecedor");
-const inputPesquisa = document.getElementById("pesquisaFornecedor");
+const inputPesquisa = document.querySelector("input[placeholder='Pesquisar fornecedores...']");
 
+// Variável para controle de edição
 let fornecedorEditando = null;
 
-// ================= FORMATAÇÃO =================
+// Formata CNPJ
 function formatarCnpj(cnpj) {
-  const v = cnpj.replace(/\D/g, "").slice(0, 14);
-  if (v.length < 14) return v;
-  return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  if (!cnpj) return "";
+  const cnpjLimpo = cnpj.replace(/\D/g, "").slice(0, 14);
+  return cnpjLimpo.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 }
 
-function formatarTelefone(tel) {
-  const v = tel.replace(/\D/g, "").slice(0, 11);
-  if (v.length === 11) return v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-  if (v.length === 10) return v.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
-  return v;
+// Formata telefone
+function formatarTelefone(telefone) {
+  if (!telefone) return "";
+  const telLimpo = telefone.replace(/\D/g, "").slice(0, 11);
+  if (telLimpo.length === 11) {
+    return telLimpo.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  } else if (telLimpo.length === 10) {
+    return telLimpo.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
+  }
+  return telLimpo;
 }
 
-// ================= VALIDAÇÃO =================
+// Validação do formulário
 function validarCampos(fornecedor) {
+  // Email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(fornecedor.email)) {
     alert("Digite um e-mail válido!");
     return false;
   }
 
-  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "").slice(0, 14);
+  // CNPJ
+  const cnpjLimpo = fornecedor.cnpj.replace(/\D/g, "");
   if (cnpjLimpo.length !== 14) {
     alert("CNPJ deve ter 14 números!");
     return false;
   }
   fornecedor.cnpj = cnpjLimpo;
 
-  const telefoneLimpo = fornecedor.telefone.replace(/\D/g, "").slice(0, 11);
-  if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+  // Telefone
+  const telLimpo = fornecedor.telefone.replace(/\D/g, "");
+  if (telLimpo.length < 10 || telLimpo.length > 11) {
     alert("Telefone deve ter 10 ou 11 números!");
     return false;
   }
-  fornecedor.telefone = telefoneLimpo;
+  fornecedor.telefone = telLimpo;
+
+  // ID
+  if (!fornecedor.id || typeof fornecedor.id !== "string") {
+    alert("ID inválido!");
+    return false;
+  }
 
   return true;
 }
 
-// ================= GERAR ID AUTOMÁTICO =================
+// Gera ID automático no formato F001, F002...
 async function gerarIdAutomatico() {
   const snapshot = await getDocs(fornecedoresRef);
-  let ids = [];
+  let maxId = 0;
   snapshot.forEach(docItem => {
     const data = docItem.data();
-    if (data.id) ids.push(parseInt(data.id.replace("F", "")));
+    if (data && data.id) {
+      const numero = parseInt(data.id.replace("F", ""));
+      if (!isNaN(numero) && numero > maxId) maxId = numero;
+    }
   });
-  const maior = ids.length ? Math.max(...ids) : 0;
-  return "F" + String(maior + 1).padStart(3, "0");
+  const novoId = "F" + String(maxId + 1).padStart(3, "0");
+  return novoId;
 }
 
-// ================= SALVAR FORNECEDOR =================
-async function salvarFornecedor(event) {
-  event.preventDefault();
+// Salvar ou editar fornecedor
+async function salvarFornecedor(e) {
+  e.preventDefault();
 
   const fornecedor = {
-    id: document.getElementById("fornId").value.trim() || await gerarIdAutomatico(),
+    id: document.getElementById("fornId").value.trim(),
     razao: document.getElementById("fornRazao").value.trim(),
     cnpj: document.getElementById("fornCnpj").value.trim(),
     email: document.getElementById("fornEmail").value.trim(),
     telefone: document.getElementById("fornTelefone").value.trim()
   };
 
-  if (!fornecedor.razao || !fornecedor.cnpj || !fornecedor.email || !fornecedor.telefone) {
-    alert("Preencha todos os campos!");
-    return;
+  // Se não estiver editando, gera ID automático
+  if (!fornecedorEditando) {
+    fornecedor.id = await gerarIdAutomatico();
+    document.getElementById("fornId").value = fornecedor.id;
   }
 
   if (!validarCampos(fornecedor)) return;
 
   try {
-    if (!fornecedorEditando) {
-      const snapshot = await getDocs(fornecedoresRef);
-      let idDuplicado = false;
-      snapshot.forEach(docItem => {
-        const data = docItem.data();
-        if (data.id === fornecedor.id) idDuplicado = true;
-      });
-      if (idDuplicado) {
-        alert("ID já existe! Gere outro ID.");
-        return;
-      }
-      await addDoc(fornecedoresRef, fornecedor);
-    } else {
-      await updateDoc(doc(db, "fornecedores", fornecedorEditando), fornecedor);
-      fornecedorEditando = null;
+    // Verifica duplicidade
+    const snapshot = await getDocs(fornecedoresRef);
+    let idDuplicado = false;
+    snapshot.forEach(docItem => {
+      const data = docItem.data();
+      if (!fornecedorEditando && data.id === fornecedor.id) idDuplicado = true;
+    });
+    if (idDuplicado) {
+      alert("ID já existe! Use outro.");
+      return;
     }
 
-    // Fechar modal e resetar formulário
+    if (fornecedorEditando) {
+      await updateDoc(doc(db, "fornecedores", fornecedorEditando), fornecedor);
+      fornecedorEditando = null;
+    } else {
+      await addDoc(fornecedoresRef, fornecedor);
+    }
+
+    formFornecedor.reset();
+    document.getElementById("fornId").value = "";
     const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroFornecedor"));
     modal.hide();
-    formFornecedor.reset();
-    document.getElementById("fornId").value = ""; // Limpar ID
     listarFornecedores();
-
-  } catch (erro) {
-    console.error("Erro ao salvar fornecedor:", erro);
+  } catch (err) {
+    console.error("Erro ao salvar fornecedor:", err);
     alert("Erro ao salvar fornecedor!");
   }
 }
 
-// ================= LISTAR FORNECEDORES =================
+// Listar fornecedores
 async function listarFornecedores() {
   tabelaFornecedores.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Carregando...</td></tr>`;
-
   try {
     const snapshot = await getDocs(fornecedoresRef);
     const pesquisa = inputPesquisa.value.trim().toLowerCase();
-    let html = [];
+    let fornecedores = [];
 
     snapshot.forEach(docItem => {
       const f = docItem.data();
-      const idDoc = docItem.id;
       if (!f) return;
-
       if (
         (f.razao && f.razao.toLowerCase().includes(pesquisa)) ||
         (f.cnpj && f.cnpj.includes(pesquisa)) ||
@@ -132,32 +151,30 @@ async function listarFornecedores() {
         (f.telefone && f.telefone.includes(pesquisa)) ||
         (f.id && f.id.toLowerCase().includes(pesquisa))
       ) {
-        html.push(`
-          <tr>
-            <td>${f.id}</td>
-            <td>${f.razao}</td>
-            <td>${formatarCnpj(f.cnpj)}</td>
-            <td>${f.email}</td>
-            <td>${formatarTelefone(f.telefone)}</td>
-            <td>
-              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${idDoc}"><i class="fas fa-edit"></i> Editar</button>
-              <button class="btn btn-sm btn-danger btn-excluir" data-id="${idDoc}"><i class="fas fa-trash-alt"></i> Excluir</button>
-            </td>
-          </tr>
-        `);
+        fornecedores.push({ ...f, docId: docItem.id });
       }
     });
 
-    // Ordenar pelo ID crescente
-    html.sort((a,b) => {
-      const idA = parseInt(a.match(/<td>F(\d{3})<\/td>/)[1]);
-      const idB = parseInt(b.match(/<td>F(\d{3})<\/td>/)[1]);
-      return idA - idB;
-    });
+    // Ordena pelo ID
+    fornecedores.sort((a, b) => parseInt(a.id.replace("F", "")) - parseInt(b.id.replace("F", "")));
 
-    tabelaFornecedores.innerHTML = html.join('') || `<tr><td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
+    let html = fornecedores.map(f => `
+      <tr>
+        <td>${f.id}</td>
+        <td>${f.razao}</td>
+        <td>${formatarCnpj(f.cnpj)}</td>
+        <td>${f.email}</td>
+        <td>${formatarTelefone(f.telefone)}</td>
+        <td>
+          <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${f.docId}"><i class="fas fa-edit"></i> Editar</button>
+          <button class="btn btn-sm btn-danger btn-excluir" data-id="${f.docId}"><i class="fas fa-trash-alt"></i> Excluir</button>
+        </td>
+      </tr>
+    `).join("");
 
-    // Botões excluir
+    tabelaFornecedores.innerHTML = html || `<tr><td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
+
+    // Excluir
     document.querySelectorAll(".btn-excluir").forEach(btn => {
       btn.addEventListener("click", async e => {
         const id = e.target.closest("button").dataset.id;
@@ -168,7 +185,7 @@ async function listarFornecedores() {
       });
     });
 
-    // Botões editar
+    // Editar
     document.querySelectorAll(".btn-editar").forEach(btn => {
       btn.addEventListener("click", async e => {
         const id = e.target.closest("button").dataset.id;
@@ -190,23 +207,14 @@ async function listarFornecedores() {
       });
     });
 
-  } catch (erro) {
-    console.error("Erro ao listar fornecedores:", erro);
+  } catch (err) {
+    console.error("Erro ao listar fornecedores:", err);
     tabelaFornecedores.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar fornecedores.</td></tr>`;
   }
 }
 
-// ================= EVENTOS =================
+// Eventos
 formFornecedor.addEventListener("submit", salvarFornecedor);
 btnSalvarFornecedor.addEventListener("click", salvarFornecedor);
 inputPesquisa.addEventListener("input", listarFornecedores);
 document.addEventListener("DOMContentLoaded", listarFornecedores);
-
-// ================= LIMITAR INPUT =================
-document.getElementById("fornCnpj").addEventListener("input", e => {
-  e.target.value = e.target.value.replace(/\D/g,"").slice(0,14);
-});
-
-document.getElementById("fornTelefone").addEventListener("input", e => {
-  e.target.value = e.target.value.replace(/\D/g,"").slice(0,11);
-});
