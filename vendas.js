@@ -1,4 +1,3 @@
-// vendas.js
 import { db } from "./firebase-config.js";
 import { collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
@@ -33,31 +32,36 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos
+// Carregar produtos no select
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
     try {
         const snapshot = await getDocs(estoqueRef);
         if (snapshot.empty) {
             console.log("Nenhum produto encontrado no Firestore!");
+            return;
         }
         snapshot.forEach(doc => {
             const p = doc.data();
-            console.log("Produto encontrado:", p.nome, p.quantidade);
-            select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">${p.nome} - ${doc.id}</option>`;
+            const preco = Number(p.preco || 0);
+            const quantidade = Number(p.quantidade || 0);
+            select.innerHTML += `
+                <option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">
+                    ${p.nome} - ${doc.id}
+                </option>
+            `;
         });
     } catch (error) {
         console.error("Erro ao carregar produtos:", error);
     }
 }
 
-
 // Adicionar item na tabela
 async function adicionarItem() {
-    const tbody = itensTable.querySelector("tbody") || (() => { 
-        itensTable.innerHTML = "<tbody></tbody>"; 
-        return itensTable.querySelector("tbody"); 
-    })();
+    const tbody = itensTable.querySelector("tbody");
+    if (!tbody) {
+        itensTable.innerHTML = "<tbody></tbody>";
+    }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -67,14 +71,14 @@ async function adicionarItem() {
         <td class="subtotal">R$ 0.00</td>
         <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
     `;
-    tbody.appendChild(tr);
+    itensTable.querySelector("tbody").appendChild(tr);
 
     const produtoSelect = tr.querySelector(".produto-select");
     await carregarProdutos(produtoSelect);
 
     // Atualiza preço ao selecionar produto
     produtoSelect.addEventListener("change", () => {
-        const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
+        const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
         tr.querySelector(".preco-input").value = preco.toFixed(2);
         atualizarSubtotal(tr);
     });
@@ -100,13 +104,13 @@ function atualizarSubtotal(tr) {
         return;
     }
 
-    const qtd = parseInt(tr.querySelector(".quantidade-input").value || 0);
-    const preco = parseFloat(tr.querySelector(".preco-input").value || 0);
-    const estoqueDisponivel = parseInt(select.selectedOptions[0]?.dataset.quant || 0);
+    let qtd = Number(tr.querySelector(".quantidade-input").value || 0);
+    const preco = Number(tr.querySelector(".preco-input").value || 0);
+    const estoqueDisponivel = Number(select.selectedOptions[0]?.dataset.quant || 0);
 
     if (qtd > estoqueDisponivel) {
-        alert("Quantidade solicitada maior que o estoque disponível!");
-        tr.querySelector(".quantidade-input").value = estoqueDisponivel;
+        qtd = estoqueDisponivel;
+        tr.querySelector(".quantidade-input").value = qtd;
     }
 
     tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
@@ -117,7 +121,7 @@ function atualizarSubtotal(tr) {
 function calcularTotal() {
     let total = 0;
     itensTable.querySelectorAll("tr").forEach(tr => {
-        total += parseFloat(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
+        total += Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
     });
     valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
@@ -145,20 +149,21 @@ async function finalizarVenda() {
     const itens = [];
     itensTable.querySelectorAll("tr").forEach(tr => {
         const produtoId = tr.querySelector(".produto-select").value;
-        if (!produtoId) return; // ignora linhas sem produto
-        const qtd = parseInt(tr.querySelector(".quantidade-input").value);
-        const preco = parseFloat(tr.querySelector(".preco-input").value);
+        if (!produtoId) return;
+        const qtd = Number(tr.querySelector(".quantidade-input").value);
+        const preco = Number(tr.querySelector(".preco-input").value);
         itens.push({ produtoId, qtd, preco });
     });
 
-    const total = parseFloat(valorTotalInput.value.replace("R$ ", ""));
+    const total = Number(valorTotalInput.value.replace("R$ ", ""));
     const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total };
 
     await addDoc(vendasRef, venda);
     alert("Venda cadastrada com sucesso!");
-    // Fecha o modal automaticamente
+
+    // Fecha o modal corretamente
     const modalEl = document.getElementById('modalCadastroVenda');
-    const modal = bootstrap.Modal.getInstance(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.hide();
 
     // Limpa itens e valor
