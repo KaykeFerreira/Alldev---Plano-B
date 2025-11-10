@@ -1,5 +1,5 @@
 import { db } from "./firebase-config.js";
-import { collection, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 // Referências
 const clientesRef = collection(db, "clientes");
@@ -8,20 +8,22 @@ const vendasRef = collection(db, "vendas");
 
 // Modal elementos
 const modal = document.getElementById("modalCadastroVenda");
-const selectCliente = modal.querySelector("select:nth-of-type(1)");
-const selectStatus = modal.querySelector("select:nth-of-type(2)");
+const selectCliente = modal.querySelector("select.form-select"); // primeiro select do modal
+const selectStatus = modal.querySelectorAll("select.form-select")[1]; // segundo select do modal
 const btnAdicionarItem = modal.querySelector(".btn-success");
 const btnFinalizar = modal.querySelector(".btn-primary");
 const itensTable = modal.querySelector("table");
 
+// Array de itens
+let itensVenda = [];
+
 // Carregar clientes
 async function carregarClientes() {
-    selectCliente.innerHTML = "<option value=''>Selecione um cliente</option>";
+    selectCliente.innerHTML = '<option value="">Selecione um cliente</option>';
     const snapshot = await getDocs(clientesRef);
     snapshot.forEach(doc => {
-        const data = doc.data();
-        // doc.id é o ID real do documento, data.nome é o nome do cliente
-        selectCliente.innerHTML += `<option value="${doc.id}">${data.nome}</option>`;
+        const c = doc.data();
+        selectCliente.innerHTML += `<option value="${doc.id}">${c.nome}</option>`;
     });
 }
 
@@ -33,43 +35,56 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos em um select
+// Carregar produtos
 async function carregarProdutos(select) {
-    select.innerHTML = "<option value=''>Selecione um produto</option>";
+    select.innerHTML = '<option value="">Selecione um produto</option>';
     const snapshot = await getDocs(estoqueRef);
     snapshot.forEach(doc => {
         const p = doc.data();
-        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quant_estoque || 0}">${p.tipo} - ${doc.id}</option>`;
+        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-estoque="${p.quant_estoque || 0}">${p.tipo} - ${doc.id}</option>`;
     });
 }
 
-// Adicionar item
+// Adicionar item à tabela
 async function adicionarItem() {
-    const tbody = itensTable.querySelector("tbody") || (itensTable.innerHTML = "<tbody></tbody>" && itensTable.querySelector("tbody"));
+    const tbody = itensTable.querySelector("tbody") || (() => {itensTable.innerHTML = "<tbody></tbody>"; return itensTable.querySelector("tbody");})();
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
         <td><select class="form-select produto-select"></select></td>
         <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
-        <td><input type="text" class="form-control preco-input" value="0"></td>
-        <td class="subtotal">0</td>
+        <td><input type="text" class="form-control preco-input" value="0" disabled></td>
+        <td class="subtotal">R$ 0.00</td>
         <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
     `;
+
     tbody.appendChild(tr);
 
     const produtoSelect = tr.querySelector(".produto-select");
+    const qtdInput = tr.querySelector(".quantidade-input");
+    const precoInput = tr.querySelector(".preco-input");
+
     await carregarProdutos(produtoSelect);
 
-    // Atualiza preço ao trocar produto
+    // Atualizar preço e estoque ao trocar produto
     produtoSelect.addEventListener("change", () => {
-        const option = produtoSelect.selectedOptions[0];
-        const preco = parseFloat(option.dataset.preco || 0);
-        tr.querySelector(".preco-input").value = preco.toFixed(2);
+        const selected = produtoSelect.selectedOptions[0];
+        const preco = parseFloat(selected.dataset.preco || 0);
+        precoInput.value = preco.toFixed(2);
+        qtdInput.max = parseInt(selected.dataset.estoque || 0);
         atualizarSubtotal(tr);
     });
 
-    tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
-    tr.querySelector(".preco-input").addEventListener("input", () => atualizarSubtotal(tr));
+    // Atualizar subtotal ao mudar quantidade
+    qtdInput.addEventListener("input", () => {
+        const max = parseInt(qtdInput.max);
+        if (qtdInput.value > max) {
+            alert(`Quantidade indisponível no estoque! Máximo: ${max}`);
+            qtdInput.value = max;
+        }
+        atualizarSubtotal(tr);
+    });
+
     tr.querySelector(".btn-remove-item").addEventListener("click", () => {
         tr.remove();
         calcularTotal();
@@ -81,7 +96,7 @@ async function adicionarItem() {
 // Atualiza subtotal
 function atualizarSubtotal(tr) {
     const qtd = parseFloat(tr.querySelector(".quantidade-input").value || 0);
-    const preco = parseFloat(tr.querySelector(".preco-input").value.replace(",", ".") || 0);
+    const preco = parseFloat(tr.querySelector(".preco-input").value || 0);
     tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
     calcularTotal();
 }
@@ -95,7 +110,7 @@ function calcularTotal() {
     modal.querySelector("input[disabled]").value = `R$ ${total.toFixed(2)}`;
 }
 
-// Gerar ID venda
+// Gerar ID automático
 async function gerarIdVenda() {
     const snapshot = await getDocs(vendasRef);
     let maior = 0;
@@ -116,24 +131,14 @@ async function finalizarVenda() {
     if (itensTable.querySelectorAll("tr").length === 0) return alert("Adicione ao menos um item!");
 
     const itens = [];
-    for (let tr of itensTable.querySelectorAll("tr")) {
+    itensTable.querySelectorAll("tr").forEach(tr => {
         const produtoId = tr.querySelector(".produto-select").value;
         const qtd = parseInt(tr.querySelector(".quantidade-input").value);
-        const preco = parseFloat(tr.querySelector(".preco-input").value.replace(",", "."));
-
-        // Verifica estoque
-        const docRef = doc(db, "estoque", produtoId);
-        const docSnap = await getDoc(docRef);
-        const estoque = docSnap.data().quant_estoque;
-        if (qtd > estoque) {
-            alert(`Estoque insuficiente para o produto ${docSnap.data().tipo}. Quantidade disponível: ${estoque}`);
-            return;
-        }
-
+        const preco = parseFloat(tr.querySelector(".preco-input").value);
         itens.push({ produtoId, qtd, preco });
-    }
+    });
 
-    const total = parseFloat(modal.querySelector("input[disabled]").value.replace("R$ ", "").replace(",", "."));
+    const total = parseFloat(modal.querySelector("input[disabled]").value.replace("R$ ", ""));
     const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total };
 
     await addDoc(vendasRef, venda);
@@ -149,5 +154,5 @@ btnFinalizar.addEventListener("click", finalizarVenda);
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarClientes();
     carregarStatus();
-    await adicionarItem();
+    await adicionarItem(); // adiciona uma linha inicial
 });
