@@ -1,5 +1,5 @@
 import { db } from "./firebase-config.js";
-import { collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { collection, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 // Referências
 const clientesRef = collection(db, "clientes");
@@ -17,17 +17,17 @@ const itensTable = modal.querySelector("table");
 // Array de itens
 let itensVenda = [];
 
-// Função para carregar clientes
+// Carregar clientes
 async function carregarClientes() {
     selectCliente.innerHTML = "";
     const snapshot = await getDocs(clientesRef);
     snapshot.forEach(doc => {
         const c = doc.data();
-        selectCliente.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        selectCliente.innerHTML += `<option value="${doc.id}">${c.nome}</option>`;
     });
 }
 
-// Função para carregar status
+// Carregar status
 function carregarStatus() {
     selectStatus.innerHTML = `
         <option value="Pago">Pago</option>
@@ -35,17 +35,17 @@ function carregarStatus() {
     `;
 }
 
-// Função para carregar produtos em um select
+// Carregar produtos em um select
 async function carregarProdutos(select) {
     select.innerHTML = "";
     const snapshot = await getDocs(estoqueRef);
     snapshot.forEach(doc => {
         const p = doc.data();
-        select.innerHTML += `<option value="${p.id_item}" data-preco="${p.preco || 0}">${p.tipo} - ${p.id_item}</option>`;
+        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quant_estoque || 0}">${p.tipo} - ${doc.id}</option>`;
     });
 }
 
-// Adicionar linha de item na tabela
+// Adicionar linha de item
 async function adicionarItem() {
     const tbody = itensTable.querySelector("tbody") || (itensTable.innerHTML = "<tbody></tbody>" && itensTable.querySelector("tbody"));
     const tr = document.createElement("tr");
@@ -63,9 +63,10 @@ async function adicionarItem() {
     const produtoSelect = tr.querySelector(".produto-select");
     await carregarProdutos(produtoSelect);
 
-    // Atualizar preço ao trocar produto
+    // Atualizar preço e quantidade disponível ao trocar produto
     produtoSelect.addEventListener("change", () => {
-        const preco = parseFloat(produtoSelect.selectedOptions[0].dataset.preco || 0);
+        const option = produtoSelect.selectedOptions[0];
+        const preco = parseFloat(option.dataset.preco || 0);
         tr.querySelector(".preco-input").value = preco.toFixed(2);
         atualizarSubtotal(tr);
     });
@@ -80,7 +81,7 @@ async function adicionarItem() {
     atualizarSubtotal(tr);
 }
 
-// Atualiza subtotal de uma linha
+// Atualiza subtotal
 function atualizarSubtotal(tr) {
     const qtd = parseFloat(tr.querySelector(".quantidade-input").value || 0);
     const preco = parseFloat(tr.querySelector(".preco-input").value.replace(",", ".") || 0);
@@ -88,7 +89,7 @@ function atualizarSubtotal(tr) {
     calcularTotal();
 }
 
-// Calcular total da venda
+// Calcular total
 function calcularTotal() {
     let total = 0;
     itensTable.querySelectorAll("tr").forEach(tr => {
@@ -97,7 +98,7 @@ function calcularTotal() {
     modal.querySelector("input[disabled]").value = `R$ ${total.toFixed(2)}`;
 }
 
-// Gerar ID automático
+// Gerar ID de venda
 async function gerarIdVenda() {
     const snapshot = await getDocs(vendasRef);
     let maior = 0;
@@ -118,12 +119,22 @@ async function finalizarVenda() {
     if (itensTable.querySelectorAll("tr").length === 0) return alert("Adicione ao menos um item!");
 
     const itens = [];
-    itensTable.querySelectorAll("tr").forEach(tr => {
+    for (let tr of itensTable.querySelectorAll("tr")) {
         const produtoId = tr.querySelector(".produto-select").value;
         const qtd = parseInt(tr.querySelector(".quantidade-input").value);
         const preco = parseFloat(tr.querySelector(".preco-input").value.replace(",", "."));
+
+        // Verificar estoque
+        const docRef = doc(db, "estoque", produtoId);
+        const docSnap = await getDoc(docRef);
+        const estoque = docSnap.data().quant_estoque;
+        if (qtd > estoque) {
+            alert(`Estoque insuficiente para o produto ${docSnap.data().tipo}. Quantidade disponível: ${estoque}`);
+            return;
+        }
+
         itens.push({ produtoId, qtd, preco });
-    });
+    }
 
     const total = parseFloat(modal.querySelector("input[disabled]").value.replace("R$ ", "").replace(",", "."));
     const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total };
