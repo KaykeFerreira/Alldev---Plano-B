@@ -46,6 +46,12 @@ function validarCampos(fornecedor) {
   }
   fornecedor.telefone = telefoneLimpo;
 
+  // Validar ID (somente números)
+  if (!fornecedor.id || isNaN(fornecedor.id)) {
+    alert("Digite um ID válido!");
+    return false;
+  }
+
   return true;
 }
 
@@ -54,13 +60,14 @@ async function salvarFornecedor(event) {
   event.preventDefault();
 
   const fornecedor = {
+    id: document.getElementById("fornId").value.trim(),
     razao: document.getElementById("fornRazao").value.trim(),
     cnpj: document.getElementById("fornCnpj").value.trim(),
     email: document.getElementById("fornEmail").value.trim(),
     telefone: document.getElementById("fornTelefone").value.trim()
   };
 
-  if (!fornecedor.razao || !fornecedor.cnpj || !fornecedor.email || !fornecedor.telefone) {
+  if (!fornecedor.razao || !fornecedor.cnpj || !fornecedor.email || !fornecedor.telefone || !fornecedor.id) {
     alert("Preencha todos os campos!");
     return;
   }
@@ -68,20 +75,28 @@ async function salvarFornecedor(event) {
   if (!validarCampos(fornecedor)) return;
 
   try {
+    // Verificar se o ID já existe
+    const snapshot = await getDocs(fornecedoresRef);
+    let idDuplicado = false;
+
+    snapshot.forEach(docItem => {
+      const data = docItem.data();
+      if (!fornecedorEditando && data.id === fornecedor.id) {
+        idDuplicado = true;
+      }
+    });
+
+    if (idDuplicado) {
+      alert("ID já existe! Escolha outro ID.");
+      return;
+    }
+
     if (fornecedorEditando) {
       // Editar fornecedor existente
       await updateDoc(doc(db, "fornecedores", fornecedorEditando), fornecedor);
       fornecedorEditando = null;
     } else {
-      // Novo fornecedor: calcular próximo ID
-      const snapshot = await getDocs(fornecedoresRef);
-      let maxId = 1000; // começa em 1000
-      snapshot.forEach(docItem => {
-        const data = docItem.data();
-        if (data.id && data.id > maxId) maxId = data.id;
-      });
-      fornecedor.id = maxId + 1;
-
+      // Novo fornecedor
       await addDoc(fornecedoresRef, fornecedor);
     }
 
@@ -115,7 +130,8 @@ async function listarFornecedores() {
         f.razao.toLowerCase().includes(pesquisa) ||
         f.cnpj.includes(pesquisa) ||
         f.email.toLowerCase().includes(pesquisa) ||
-        f.telefone.includes(pesquisa)
+        f.telefone.includes(pesquisa) ||
+        f.id.includes(pesquisa)
       ) {
         html += `
           <tr>
@@ -134,7 +150,7 @@ async function listarFornecedores() {
 
     tabelaFornecedores.innerHTML = html || `<tr><td colspan="5" class="text-center text-muted">Nenhum fornecedor encontrado.</td></tr>`;
 
-    // Adicionar eventos aos botões
+    // Botões de exclusão
     document.querySelectorAll(".btn-excluir").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.target.closest("button").dataset.id;
@@ -145,6 +161,7 @@ async function listarFornecedores() {
       });
     });
 
+    // Botões de edição
     document.querySelectorAll(".btn-editar").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.target.closest("button").dataset.id;
@@ -152,13 +169,13 @@ async function listarFornecedores() {
         snapshot.forEach(docItem => {
           if (docItem.id === id) {
             const f = docItem.data();
+            document.getElementById("fornId").value = f.id;
             document.getElementById("fornRazao").value = f.razao;
             document.getElementById("fornCnpj").value = f.cnpj;
             document.getElementById("fornEmail").value = f.email;
             document.getElementById("fornTelefone").value = f.telefone;
             fornecedorEditando = id;
 
-            // Abrir modal para edição
             const modal = new bootstrap.Modal(document.getElementById("modalCadastroFornecedor"));
             modal.show();
           }
