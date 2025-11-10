@@ -1,21 +1,34 @@
-import { db } from "./firebase-config.js";
-import { collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+// vendas.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referências
+// Configuração do Firebase (substitua pelos seus dados)
+const firebaseConfig = {
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_AUTH_DOMAIN",
+    projectId: "SEU_PROJECT_ID",
+    storageBucket: "SEU_STORAGE_BUCKET",
+    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+    appId: "SEU_APP_ID"
+};
+
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Referências Firestore
 const clientesRef = collection(db, "clientes");
 const estoqueRef = collection(db, "estoque");
 const vendasRef = collection(db, "vendas");
 
 // Modal elementos
 const modal = document.getElementById("modalCadastroVenda");
-const selectCliente = modal.querySelector("select.form-select"); // primeiro select do modal
-const selectStatus = modal.querySelectorAll("select.form-select")[1]; // segundo select do modal
+const selects = modal.querySelectorAll("select.form-select");
+const selectCliente = selects[0]; // cliente
+const selectStatus = selects[1];  // status
 const btnAdicionarItem = modal.querySelector(".btn-success");
 const btnFinalizar = modal.querySelector(".btn-primary");
 const itensTable = modal.querySelector("table");
-
-// Array de itens
-let itensVenda = [];
 
 // Carregar clientes
 async function carregarClientes() {
@@ -35,7 +48,7 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos
+// Carregar produtos em select
 async function carregarProdutos(select) {
     select.innerHTML = '<option value="">Selecione um produto</option>';
     const snapshot = await getDocs(estoqueRef);
@@ -45,11 +58,10 @@ async function carregarProdutos(select) {
     });
 }
 
-// Adicionar item à tabela
+// Adicionar item
 async function adicionarItem() {
-    const tbody = itensTable.querySelector("tbody") || (() => {itensTable.innerHTML = "<tbody></tbody>"; return itensTable.querySelector("tbody");})();
+    const tbody = itensTable.querySelector("tbody") || (() => { itensTable.innerHTML = "<tbody></tbody>"; return itensTable.querySelector("tbody"); })();
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
         <td><select class="form-select produto-select"></select></td>
         <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
@@ -57,7 +69,6 @@ async function adicionarItem() {
         <td class="subtotal">R$ 0.00</td>
         <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
     `;
-
     tbody.appendChild(tr);
 
     const produtoSelect = tr.querySelector(".produto-select");
@@ -66,7 +77,6 @@ async function adicionarItem() {
 
     await carregarProdutos(produtoSelect);
 
-    // Atualizar preço e estoque ao trocar produto
     produtoSelect.addEventListener("change", () => {
         const selected = produtoSelect.selectedOptions[0];
         const preco = parseFloat(selected.dataset.preco || 0);
@@ -75,7 +85,6 @@ async function adicionarItem() {
         atualizarSubtotal(tr);
     });
 
-    // Atualizar subtotal ao mudar quantidade
     qtdInput.addEventListener("input", () => {
         const max = parseInt(qtdInput.max);
         if (qtdInput.value > max) {
@@ -93,7 +102,7 @@ async function adicionarItem() {
     atualizarSubtotal(tr);
 }
 
-// Atualiza subtotal
+// Atualizar subtotal
 function atualizarSubtotal(tr) {
     const qtd = parseFloat(tr.querySelector(".quantidade-input").value || 0);
     const preco = parseFloat(tr.querySelector(".preco-input").value || 0);
@@ -101,7 +110,7 @@ function atualizarSubtotal(tr) {
     calcularTotal();
 }
 
-// Calcula total
+// Calcular total
 function calcularTotal() {
     let total = 0;
     itensTable.querySelectorAll("tr").forEach(tr => {
@@ -110,7 +119,7 @@ function calcularTotal() {
     modal.querySelector("input[disabled]").value = `R$ ${total.toFixed(2)}`;
 }
 
-// Gerar ID automático
+// Gerar ID venda
 async function gerarIdVenda() {
     const snapshot = await getDocs(vendasRef);
     let maior = 0;
@@ -154,5 +163,5 @@ btnFinalizar.addEventListener("click", finalizarVenda);
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarClientes();
     carregarStatus();
-    await adicionarItem(); // adiciona uma linha inicial
+    await adicionarItem();
 });
