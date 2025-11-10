@@ -15,9 +15,6 @@ const btnFinalizar = document.getElementById("btn-finalizar-venda");
 const itensTable = document.getElementById("itens-table");
 const valorTotalInput = document.getElementById("valor-total");
 
-// Array de itens
-let itensVenda = [];
-
 // Carregar clientes
 async function carregarClientes() {
     selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
@@ -42,7 +39,12 @@ async function carregarProdutos(select) {
     const snapshot = await getDocs(estoqueRef);
     snapshot.forEach(doc => {
         const p = doc.data();
-        select.innerHTML += `<option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">${p.tipo} - ${doc.id}</option>`;
+        // ⚠️ Ajuste os nomes dos campos conforme seu Firestore
+        select.innerHTML += `
+            <option value="${doc.id}" data-preco="${p.preco || 0}" data-quant="${p.quantidade || 0}">
+                ${p.tipo || p.nome || 'Produto'} - ${doc.id}
+            </option>
+        `;
     });
 }
 
