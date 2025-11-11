@@ -133,13 +133,22 @@ async function carregarProdutos() {
 
 
 // =======================
-// FUNÇÃO DE PESQUISA
+// PESQUISA EM TEMPO REAL
 // =======================
-document.getElementById("btnBuscar").addEventListener("click", async () => {
-  const termo = document.getElementById("pesquisa").value.trim().toLowerCase();
-  const tabela = document.getElementById("tabela-produtos");
+
+const campoPesquisa = document.getElementById("pesquisa");
+const tabela = document.getElementById("tabela-produtos");
+
+campoPesquisa.addEventListener("input", async () => {
+  const termo = campoPesquisa.value.trim().toLowerCase();
+
+  if (termo === "") {
+    carregarProdutos(); // se o campo estiver vazio, mostra tudo
+    return;
+  }
+
   tabela.innerHTML = `
-    <tr><td colspan="6" class="text-center text-muted">Pesquisando...</td></tr>
+    <tr><td colspan="6" class="text-center text-muted">Filtrando...</td></tr>
   `;
 
   try {
@@ -149,15 +158,7 @@ document.getElementById("btnBuscar").addEventListener("click", async () => {
     produtosSnap.forEach((docSnap) => {
       const p = docSnap.data();
       const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
-      
-      document.getElementById("pesquisa").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    document.getElementById("btnBuscar").click();
-  }
-});
 
-
-      // se o termo pesquisado aparecer em qualquer campo
       if (texto.includes(termo)) {
         html += `
           <tr>
@@ -191,6 +192,7 @@ document.getElementById("btnBuscar").addEventListener("click", async () => {
     `;
   }
 });
+
 
 // =======================
 // BOTÕES EDITAR / EXCLUIR
