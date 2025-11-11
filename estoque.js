@@ -184,7 +184,7 @@ function conectarBotoes() {
 document.getElementById("logout-btn").addEventListener("click", async () => {
   try {
     await signOut(auth);
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   } catch (erro) {
     console.error("Erro ao sair:", erro);
     alert("Erro ao fazer logout.");
