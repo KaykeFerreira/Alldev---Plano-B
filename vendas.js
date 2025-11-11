@@ -11,10 +11,10 @@ import {
 
 // Referências Firebase
 const clientesRef = collection(db, "clientes");
-const produtosRef = collection(db, "produtos"); // ✅ agora lê da coleção correta
+const produtosRef = collection(db, "produtos");
 const vendasRef = collection(db, "vendas");
 
-// Elementos do modal
+// Elementos
 const selectCliente = document.getElementById("select-cliente");
 const selectStatus = document.getElementById("select-status");
 const btnAdicionarItem = document.getElementById("btn-adicionar-item");
@@ -45,18 +45,18 @@ async function carregarProdutos(select) {
   select.innerHTML = `<option value="">Selecione um produto</option>`;
   try {
     const snapshot = await getDocs(produtosRef);
-    if (snapshot.empty) {
-      console.log("Nenhum produto encontrado no Firestore!");
-      return;
-    }
-
     snapshot.forEach(doc => {
       const p = doc.data();
       const preco = Number(p.preco || 0);
       const quantidade = Number(p.quantidade || 0);
       select.innerHTML += `
-        <option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">
-          ${p.nome} (${p.marca}) - Estoque: ${quantidade}
+        <option 
+          value="${doc.id}" 
+          data-preco="${preco}" 
+          data-quant="${quantidade}"
+          data-nome="${p.nome}"
+        >
+          ${p.nome} (${p.marca || "Sem marca"}) - R$ ${preco.toFixed(2)} | Estoque: ${quantidade}
         </option>
       `;
     });
@@ -67,17 +67,12 @@ async function carregarProdutos(select) {
 
 // === Adicionar ITEM na tabela ===
 async function adicionarItem() {
-  let tbody = itensTable.querySelector("tbody");
-  if (!tbody) {
-    tbody = document.createElement("tbody");
-    itensTable.appendChild(tbody);
-  }
-
+  const tbody = itensTable.querySelector("tbody");
   const tr = document.createElement("tr");
   tr.innerHTML = `
     <td><select class="form-select produto-select"></select></td>
     <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
-    <td><input type="text" class="form-control preco-input" value="0" disabled></td>
+    <td><input type="text" class="form-control preco-input" value="0.00" disabled></td>
     <td class="subtotal">R$ 0.00</td>
     <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
   `;
@@ -86,7 +81,7 @@ async function adicionarItem() {
   const produtoSelect = tr.querySelector(".produto-select");
   await carregarProdutos(produtoSelect);
 
-  // Atualiza preço ao selecionar produto
+  // Atualiza preço e subtotal ao selecionar produto
   produtoSelect.addEventListener("change", () => {
     const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
     tr.querySelector(".preco-input").value = preco.toFixed(2);
@@ -108,22 +103,21 @@ async function adicionarItem() {
 // === Atualizar SUBTOTAL ===
 function atualizarSubtotal(tr) {
   const select = tr.querySelector(".produto-select");
-  if (!select.value) {
-    tr.querySelector(".subtotal").textContent = "R$ 0.00";
-    calcularTotal();
-    return;
+  const qtdInput = tr.querySelector(".quantidade-input");
+  const precoInput = tr.querySelector(".preco-input");
+  const subtotalEl = tr.querySelector(".subtotal");
+
+  const preco = Number(precoInput.value) || 0;
+  const qtd = Number(qtdInput.value) || 0;
+  const estoque = Number(select.selectedOptions[0]?.dataset.quant || 0);
+
+  if (qtd > estoque) {
+    alert(`Quantidade maior que o estoque disponível (${estoque})!`);
+    qtdInput.value = estoque;
   }
 
-  let qtd = Number(tr.querySelector(".quantidade-input").value || 0);
-  const preco = Number(tr.querySelector(".preco-input").value || 0);
-  const estoqueDisponivel = Number(select.selectedOptions[0]?.dataset.quant || 0);
-
-  if (qtd > estoqueDisponivel) {
-    qtd = estoqueDisponivel;
-    tr.querySelector(".quantidade-input").value = qtd;
-  }
-
-  tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
+  const subtotal = qtd * preco;
+  subtotalEl.textContent = `R$ ${subtotal.toFixed(2)}`;
   calcularTotal();
 }
 
@@ -131,7 +125,8 @@ function atualizarSubtotal(tr) {
 function calcularTotal() {
   let total = 0;
   itensTable.querySelectorAll("tbody tr").forEach(tr => {
-    total += Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
+    const subtotal = Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
+    total += subtotal;
   });
   valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
@@ -154,23 +149,33 @@ async function finalizarVenda() {
   const data = document.querySelector("#modalCadastroVenda input[type=date]").value;
 
   if (!clienteId) return alert("Selecione um cliente!");
-  if (itensTable.querySelectorAll("tbody tr").length === 0) return alert("Adicione ao menos um item!");
+  const linhas = itensTable.querySelectorAll("tbody tr");
+  if (linhas.length === 0) return alert("Adicione ao menos um item!");
 
   const itens = [];
-  itensTable.querySelectorAll("tbody tr").forEach(tr => {
+  linhas.forEach(tr => {
     const produtoId = tr.querySelector(".produto-select").value;
-    if (!produtoId) return;
     const qtd = Number(tr.querySelector(".quantidade-input").value);
     const preco = Number(tr.querySelector(".preco-input").value);
-    itens.push({ produtoId, qtd, preco });
+    if (produtoId && qtd > 0) {
+      itens.push({ produtoId, qtd, preco });
+    }
   });
 
-  const total = Number(valorTotalInput.value.replace("R$ ", ""));
-  const venda = { id: await gerarIdVenda(), cliente: clienteId, status, data, itens, total };
+  const total = Number(valorTotalInput.value.replace("R$ ", "")) || 0;
+  const venda = {
+    id: await gerarIdVenda(),
+    cliente: clienteId,
+    status,
+    data,
+    itens,
+    total
+  };
 
   await addDoc(vendasRef, venda);
   alert("✅ Venda cadastrada com sucesso!");
 
+  // Fechar modal e resetar
   const modalEl = document.getElementById('modalCadastroVenda');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.hide();
@@ -189,7 +194,6 @@ async function editarVenda(idVenda) {
 
   const v = snap.data();
   alert(`🔧 Edição de venda ainda em construção (Venda ${v.id})`);
-  // Aqui você pode abrir o modal de edição e preencher os campos se quiser fazer edição completa
 }
 
 // === Excluir VENDA ===
@@ -205,7 +209,7 @@ async function excluirVenda(idVenda) {
   }
 }
 
-// === Carregar VENDAS existentes ===
+// === Carregar VENDAS ===
 async function carregarVendas() {
   const tabela = document.querySelector("table.table tbody");
   tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
@@ -238,7 +242,6 @@ async function carregarVendas() {
     `;
   });
 
-  // Eventos de editar/excluir
   document.querySelectorAll(".btn-editar-venda").forEach(btn => {
     btn.addEventListener("click", () => editarVenda(btn.dataset.id));
   });
@@ -257,4 +260,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   carregarStatus();
   await adicionarItem();
   await carregarVendas();
-});    
+});
