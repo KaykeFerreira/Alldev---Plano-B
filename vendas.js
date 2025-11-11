@@ -14,7 +14,7 @@ const btnFinalizar = document.getElementById("btn-finalizar-venda");
 const itensTable = document.getElementById("itens-table");
 const valorTotalInput = document.getElementById("valor-total");
 
-// Carregar clientes
+// === Carregar CLIENTES ===
 async function carregarClientes() {
     selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
     const snapshot = await getDocs(clientesRef);
@@ -24,7 +24,7 @@ async function carregarClientes() {
     });
 }
 
-// Carregar status
+// === Carregar STATUS ===
 function carregarStatus() {
     selectStatus.innerHTML = `
         <option value="Pago">Pago</option>
@@ -32,7 +32,7 @@ function carregarStatus() {
     `;
 }
 
-// Carregar produtos no select
+// === Carregar PRODUTOS ===
 async function carregarProdutos(select) {
     select.innerHTML = `<option value="">Selecione um produto</option>`;
     try {
@@ -41,13 +41,14 @@ async function carregarProdutos(select) {
             console.log("Nenhum produto encontrado no Firestore!");
             return;
         }
+
         snapshot.forEach(doc => {
             const p = doc.data();
             const preco = Number(p.preco || 0);
             const quantidade = Number(p.quantidade || 0);
             select.innerHTML += `
                 <option value="${doc.id}" data-preco="${preco}" data-quant="${quantidade}">
-                    ${p.nome} - ${doc.id}
+                    ${p.nome} (${p.marca}) - Estoque: ${quantidade}
                 </option>
             `;
         });
@@ -56,11 +57,12 @@ async function carregarProdutos(select) {
     }
 }
 
-// Adicionar item na tabela
+// === Adicionar ITEM na tabela ===
 async function adicionarItem() {
-    const tbody = itensTable.querySelector("tbody");
+    let tbody = itensTable.querySelector("tbody");
     if (!tbody) {
-        itensTable.innerHTML = "<tbody></tbody>";
+        tbody = document.createElement("tbody");
+        itensTable.appendChild(tbody);
     }
 
     const tr = document.createElement("tr");
@@ -71,7 +73,7 @@ async function adicionarItem() {
         <td class="subtotal">R$ 0.00</td>
         <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
     `;
-    itensTable.querySelector("tbody").appendChild(tr);
+    tbody.appendChild(tr);
 
     const produtoSelect = tr.querySelector(".produto-select");
     await carregarProdutos(produtoSelect);
@@ -95,7 +97,7 @@ async function adicionarItem() {
     atualizarSubtotal(tr);
 }
 
-// Atualizar subtotal
+// === Atualizar SUBTOTAL ===
 function atualizarSubtotal(tr) {
     const select = tr.querySelector(".produto-select");
     if (!select.value) {
@@ -117,37 +119,37 @@ function atualizarSubtotal(tr) {
     calcularTotal();
 }
 
-// Calcular total
+// === Calcular TOTAL ===
 function calcularTotal() {
     let total = 0;
-    itensTable.querySelectorAll("tr").forEach(tr => {
+    itensTable.querySelectorAll("tbody tr").forEach(tr => {
         total += Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
     });
     valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
 
-// Gerar ID da venda
+// === Gerar ID da venda ===
 async function gerarIdVenda() {
     const snapshot = await getDocs(vendasRef);
     let maior = 0;
     snapshot.forEach(doc => {
-        const num = parseInt(doc.data().id.replace(/\D/g, ""));
-        if (!isNaN(num) && num > maior) maior = num;
+        const num = parseInt(doc.data().id?.replace(/\D/g, "")) || 0;
+        if (num > maior) maior = num;
     });
     return "V" + String(maior + 1).padStart(3, "0");
 }
 
-// Finalizar venda
+// === Finalizar VENDA ===
 async function finalizarVenda() {
     const clienteId = selectCliente.value;
     const status = selectStatus.value;
     const data = document.querySelector("#modalCadastroVenda input[type=date]").value;
 
     if (!clienteId) return alert("Selecione um cliente!");
-    if (itensTable.querySelectorAll("tr").length === 0) return alert("Adicione ao menos um item!");
+    if (itensTable.querySelectorAll("tbody tr").length === 0) return alert("Adicione ao menos um item!");
 
     const itens = [];
-    itensTable.querySelectorAll("tr").forEach(tr => {
+    itensTable.querySelectorAll("tbody tr").forEach(tr => {
         const produtoId = tr.querySelector(".produto-select").value;
         if (!produtoId) return;
         const qtd = Number(tr.querySelector(".quantidade-input").value);
@@ -161,7 +163,7 @@ async function finalizarVenda() {
     await addDoc(vendasRef, venda);
     alert("Venda cadastrada com sucesso!");
 
-    // Fecha o modal corretamente
+    // Fecha o modal
     const modalEl = document.getElementById('modalCadastroVenda');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.hide();
@@ -169,16 +171,45 @@ async function finalizarVenda() {
     // Limpa itens e valor
     itensTable.querySelector("tbody").innerHTML = "";
     valorTotalInput.value = "";
-    await adicionarItem(); // adiciona linha vazia novamente
+    await adicionarItem();
+    await carregarVendas(); // Atualiza tabela
 }
 
-// Eventos
+// === Carregar VENDAS existentes ===
+async function carregarVendas() {
+    const tabela = document.querySelector("table.table tbody");
+    tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
+
+    const snapshot = await getDocs(vendasRef);
+    if (snapshot.empty) {
+        tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Nenhuma venda cadastrada</td></tr>";
+        return;
+    }
+
+    tabela.innerHTML = "";
+    snapshot.forEach(doc => {
+        const v = doc.data();
+        tabela.innerHTML += `
+            <tr>
+                <td>${v.id}</td>
+                <td>${v.cliente}</td>
+                <td>${v.data}</td>
+                <td>${v.status}</td>
+                <td>R$ ${Number(v.total).toFixed(2)}</td>
+                <td><button class="btn btn-sm btn-outline-secondary" disabled>Visualizar</button></td>
+            </tr>
+        `;
+    });
+}
+
+// === Eventos ===
 btnAdicionarItem.addEventListener("click", adicionarItem);
 btnFinalizar.addEventListener("click", finalizarVenda);
 
-// Inicialização
+// === Inicialização ===
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarClientes();
     carregarStatus();
     await adicionarItem(); // linha inicial
+    await carregarVendas(); // 👈 agora mostra as vendas cadastradas
 });
