@@ -1,4 +1,6 @@
-// Importações do Firebase
+// =======================
+// IMPORTAÇÕES DO FIREBASE
+// =======================
 import { auth, db } from "./firebase-config.js";
 import {
   signOut,
@@ -14,7 +16,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 // =======================
-// VERIFICA LOGIN
+// VERIFICA LOGIN DO USUÁRIO
 // =======================
 onAuthStateChanged(auth, (user) => {
   if (!user) {
@@ -26,36 +28,46 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // =======================
-// SALVAR PRODUTO NOVO
+// SALVAR OU ATUALIZAR PRODUTO
 // =======================
 document.getElementById("btnSalvarProduto").addEventListener("click", async () => {
   const codigo = document.getElementById("codigo").value.trim();
   const nome = document.getElementById("nome").value.trim();
   const marca = document.getElementById("marca").value.trim();
   const quantidade = parseInt(document.getElementById("quantidade").value);
+  const preco = parseFloat(document.getElementById("preco").value);
   const descricao = document.getElementById("descricao").value.trim();
 
-  if (!codigo || !nome || !marca || isNaN(quantidade)) {
+  if (!codigo || !nome || !marca || isNaN(quantidade) || isNaN(preco)) {
     alert("⚠️ Preencha todos os campos obrigatórios!");
     return;
   }
 
   try {
-    if (document.getElementById("btnSalvarProduto").dataset.editingId) {
-      // Atualizar produto existente
-      const id = document.getElementById("btnSalvarProduto").dataset.editingId;
-      const ref = doc(db, "produtos", id);
-      await updateDoc(ref, { codigo, nome, marca, quantidade, descricao });
+    const btn = document.getElementById("btnSalvarProduto");
+    const editingId = btn.dataset.editingId;
 
+    if (editingId) {
+      // Atualiza produto existente
+      const ref = doc(db, "produtos", editingId);
+      await updateDoc(ref, {
+        codigo,
+        nome,
+        marca,
+        quantidade,
+        preco,
+        descricao
+      });
       alert("✅ Produto atualizado com sucesso!");
-      delete document.getElementById("btnSalvarProduto").dataset.editingId;
+      delete btn.dataset.editingId;
     } else {
-      // Criar novo produto
+      // Cria novo produto
       await addDoc(collection(db, "produtos"), {
         codigo,
         nome,
         marca,
         quantidade,
+        preco,
         descricao,
         criadoEm: new Date().toISOString()
       });
@@ -73,12 +85,12 @@ document.getElementById("btnSalvarProduto").addEventListener("click", async () =
 });
 
 // =======================
-// CARREGAR PRODUTOS
+// CARREGA PRODUTOS NA TABELA
 // =======================
 async function carregarProdutos() {
   const tabela = document.getElementById("tabela-produtos");
   tabela.innerHTML = `
-    <tr><td colspan="5" class="text-center text-muted">Carregando produtos...</td></tr>
+    <tr><td colspan="6" class="text-center text-muted">Carregando produtos...</td></tr>
   `;
 
   try {
@@ -93,6 +105,7 @@ async function carregarProdutos() {
           <td>${p.nome}</td>
           <td>${p.marca}</td>
           <td>${p.quantidade}</td>
+          <td>R$ ${(p.preco || 0).toFixed(2)}</td>
           <td>
             <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docSnap.id}">
               <i class="fas fa-edit"></i> Editar
@@ -105,86 +118,21 @@ async function carregarProdutos() {
       `;
     });
 
-    tabela.innerHTML = html || `
-      <tr><td colspan="5" class="text-center text-muted">Nenhum produto encontrado.</td></tr>
-    `;
+    tabela.innerHTML =
+      html ||
+      `<tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td></tr>`;
 
-    // Conecta os botões de ação
     conectarBotoes();
   } catch (erro) {
     console.error("Erro ao carregar produtos:", erro);
     tabela.innerHTML = `
-      <tr><td colspan="5" class="text-center text-danger">Erro ao carregar produtos.</td></tr>
+      <tr><td colspan="6" class="text-center text-danger">Erro ao carregar produtos.</td></tr>
     `;
   }
 }
 
 // =======================
-// PESQUISAR PRODUTOS
-// =======================
-document.getElementById("btnBuscar").addEventListener("click", async () => {
-  const termo = document.getElementById("pesquisa").value.trim().toLowerCase();
-  await pesquisarProdutos(termo);
-});
-
-// Permite buscar também pressionando Enter no campo
-document.getElementById("pesquisa").addEventListener("keyup", async (e) => {
-  if (e.key === "Enter") {
-    const termo = e.target.value.trim().toLowerCase();
-    await pesquisarProdutos(termo);
-  }
-});
-
-// Função para filtrar produtos
-async function pesquisarProdutos(termo) {
-  const tabela = document.getElementById("tabela-produtos");
-  tabela.innerHTML = `
-    <tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>
-  `;
-
-  try {
-    const produtosSnap = await getDocs(collection(db, "produtos"));
-    let html = "";
-
-    produtosSnap.forEach((docSnap) => {
-      const p = docSnap.data();
-      const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
-
-      if (texto.includes(termo)) {
-        html += `
-          <tr>
-            <td>${p.codigo}</td>
-            <td>${p.nome}</td>
-            <td>${p.marca}</td>
-            <td>${p.quantidade}</td>
-            <td>
-              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docSnap.id}">
-                <i class="fas fa-edit"></i> Editar
-              </button>
-              <button class="btn btn-sm btn-danger btn-excluir" data-id="${docSnap.id}">
-                <i class="fas fa-trash-alt"></i> Excluir
-              </button>
-            </td>
-          </tr>
-        `;
-      }
-    });
-
-    tabela.innerHTML = html || `
-      <tr><td colspan="5" class="text-center text-muted">Nenhum produto encontrado.</td></tr>
-    `;
-
-    conectarBotoes(); // reconecta eventos de editar/excluir
-  } catch (erro) {
-    console.error("Erro ao buscar produtos:", erro);
-    tabela.innerHTML = `
-      <tr><td colspan="5" class="text-center text-danger">Erro ao buscar produtos.</td></tr>
-    `;
-  }
-}
-
-// =======================
-// CONECTA BOTÕES EDITAR / EXCLUIR
+// BOTÕES EDITAR / EXCLUIR
 // =======================
 function conectarBotoes() {
   // Excluir produto
@@ -197,7 +145,7 @@ function conectarBotoes() {
           alert("🗑️ Produto excluído com sucesso!");
           carregarProdutos();
         } catch (erro) {
-          console.error("Erro ao excluir:", erro);
+          console.error("Erro ao excluir produto:", erro);
           alert("❌ Erro ao excluir produto.");
         }
       }
@@ -209,6 +157,7 @@ function conectarBotoes() {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       const produtosSnap = await getDocs(collection(db, "produtos"));
+
       produtosSnap.forEach((docSnap) => {
         if (docSnap.id === id) {
           const p = docSnap.data();
@@ -216,12 +165,11 @@ function conectarBotoes() {
           document.getElementById("nome").value = p.nome;
           document.getElementById("marca").value = p.marca;
           document.getElementById("quantidade").value = p.quantidade;
+          document.getElementById("preco").value = p.preco || 0;
           document.getElementById("descricao").value = p.descricao || "";
 
-          // Marca que é edição
           document.getElementById("btnSalvarProduto").dataset.editingId = id;
 
-          // Abre o modal
           const modal = new bootstrap.Modal(document.getElementById("modalCadastroEstoque"));
           modal.show();
         }
@@ -231,7 +179,7 @@ function conectarBotoes() {
 }
 
 // =======================
-// LOGOUT
+// BOTÃO DE LOGOUT
 // =======================
 document.getElementById("logout-btn").addEventListener("click", async () => {
   try {
