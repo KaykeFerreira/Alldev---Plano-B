@@ -46,9 +46,11 @@ async function carregarProdutos(select) {
   const snapshot = await getDocs(produtosRef);
   snapshot.forEach((docSnap) => {
     const p = docSnap.data();
+    const preco = Number(p.preco) || 0; // fallback caso não exista preço
+    const qtd = Number(p.quantidade) || 0;
     select.innerHTML += `
-      <option value="${docSnap.id}" data-preco="${p.preco}">
-        ${p.nome} (${p.marca}) - Estoque: ${p.quantidade}
+      <option value="${docSnap.id}" data-preco="${preco}" data-estoque="${qtd}">
+        ${p.nome} (${p.marca || "Sem marca"}) — Estoque: ${qtd}
       </option>`;
   });
 }
@@ -69,13 +71,17 @@ async function adicionarItem() {
   const produtoSelect = tr.querySelector(".produto-select");
   await carregarProdutos(produtoSelect);
 
+  // Quando selecionar produto
   produtoSelect.addEventListener("change", () => {
     const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
     tr.querySelector(".preco-input").value = preco.toFixed(2);
     atualizarSubtotal(tr);
   });
 
+  // Atualiza subtotal quando muda quantidade
   tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
+
+  // Remove linha
   tr.querySelector(".btn-remove-item").addEventListener("click", () => {
     tr.remove();
     calcularTotal();
@@ -150,11 +156,11 @@ async function finalizarVenda() {
 // === Carregar VENDAS ===
 async function carregarVendas() {
   const tabela = document.querySelector("table.table tbody");
-  tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
+  tabela.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
 
   const snapshot = await getDocs(vendasRef);
   if (snapshot.empty) {
-    tabela.innerHTML = "<tr><td colspan='5'>Nenhuma venda</td></tr>";
+    tabela.innerHTML = "<tr><td colspan='6'>Nenhuma venda</td></tr>";
     return;
   }
 
