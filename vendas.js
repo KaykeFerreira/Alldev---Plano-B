@@ -138,6 +138,7 @@ async function finalizarVenda() {
   const clienteId = selectCliente.value;
   const status = selectStatus.value;
   const data = document.querySelector("#modalCadastroVenda input[type=date]").value;
+  const desconto = Number(descontoInput?.value || 0);
 
   if (!clienteId) return alert("Selecione um cliente!");
   const linhas = itensTable.querySelectorAll("tbody tr");
@@ -159,6 +160,7 @@ async function finalizarVenda() {
     cliente: clienteId,
     status,
     data,
+    desconto,
     itens,
     total
   };
@@ -183,24 +185,51 @@ async function exibirDetalhes(idVenda) {
   const clienteSnap = await getDoc(doc(db, "clientes", v.cliente));
   const nomeCliente = clienteSnap.exists() ? clienteSnap.data().nome : "Cliente não encontrado";
 
-  // Lista de itens
-  let detalhesItens = "";
+  // Lista de itens detalhados
+  let detalhesItens = `
+    <table class="table table-bordered text-start">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Qtd</th>
+          <th>Preço Unit.</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
   for (const item of v.itens) {
     const prodSnap = await getDoc(doc(db, "produtos", item.produtoId));
     const nomeProd = prodSnap.exists() ? prodSnap.data().nome : "Produto desconhecido";
-    detalhesItens += `<li>${nomeProd} - ${item.qtd}x - R$ ${(item.qtd * item.preco).toFixed(2)}</li>`;
+    const subtotal = item.qtd * item.preco;
+    detalhesItens += `
+      <tr>
+        <td>${nomeProd}</td>
+        <td>${item.qtd}</td>
+        <td>R$ ${item.preco.toFixed(2)}</td>
+        <td>R$ ${subtotal.toFixed(2)}</td>
+      </tr>
+    `;
   }
+  detalhesItens += `
+      </tbody>
+    </table>
+  `;
 
+  // SweetAlert detalhado
   Swal.fire({
     title: `📋 Detalhes da Venda ${v.id}`,
     html: `
       <p><b>Cliente:</b> ${nomeCliente}</p>
       <p><b>Data:</b> ${v.data}</p>
       <p><b>Status:</b> ${v.status}</p>
-      <ul>${detalhesItens}</ul>
       <hr>
-      <h5>Total: R$ ${v.total.toFixed(2)}</h5>
+      ${detalhesItens}
+      <hr>
+      <p><b>Desconto:</b> R$ ${(v.desconto || 0).toFixed(2)}</p>
+      <h5><b>Total Final:</b> R$ ${v.total.toFixed(2)}</h5>
     `,
+    width: 700,
     confirmButtonText: "Fechar"
   });
 }
