@@ -5,233 +5,192 @@ import {
   addDoc,
   doc,
   getDoc,
-  deleteDoc
+  updateDoc,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// === Referências às coleções ===
+// Referências no Firestore
 const clientesRef = collection(db, "clientes");
 const produtosRef = collection(db, "produtos");
 const vendasRef = collection(db, "vendas");
 
-// === Elementos da página ===
-const selectCliente = document.getElementById("select-cliente");
-const selectStatus = document.getElementById("select-status");
-const btnAdicionarItem = document.getElementById("btn-adicionar-item");
-const btnFinalizar = document.getElementById("btn-finalizar-venda");
-const itensTable = document.getElementById("tabela-itens");
-const valorTotalInput = document.getElementById("valor-total");
-const descontoInput = document.getElementById("desconto");
+const clienteSelect = document.getElementById("cliente");
+const itensContainer = document.getElementById("itensContainer");
+const btnAddItem = document.getElementById("adicionarItem");
+const btnCadastrar = document.getElementById("cadastrarVenda");
+const listaVendas = document.getElementById("listaVendas");
 
-// === Carregar CLIENTES ===
-async function carregarClientes() {
-  selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
-  const snapshot = await getDocs(clientesRef);
-  snapshot.forEach((docSnap) => {
-    const cliente = docSnap.data();
-    selectCliente.innerHTML += `<option value="${docSnap.id}">${cliente.nome}</option>`;
-  });
+let produtos = [];
+let clientes = [];
+
+// ======= CARREGAR CLIENTES E PRODUTOS =======
+async function carregarDados() {
+  try {
+    const clientesSnap = await getDocs(clientesRef);
+    clientes = clientesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    clienteSelect.innerHTML =
+      "<option value=''>Selecione o cliente</option>" +
+      clientes.map((c) => `<option value='${c.id}'>${c.nome}</option>`).join("");
+
+    const produtosSnap = await getDocs(produtosRef);
+    produtos = produtosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    console.log("Produtos carregados:", produtos);
+  } catch (e) {
+    console.error("Erro ao carregar dados:", e);
+  }
 }
 
-// === Carregar STATUS ===
-function carregarStatus() {
-  selectStatus.innerHTML = `
-    <option value="Pago">Pago</option>
-    <option value="Pendente">Pendente</option>
+// ======= ADICIONAR ITEM =======
+function adicionarItem() {
+  const itemDiv = document.createElement("div");
+  itemDiv.classList.add("itemVenda");
+  itemDiv.innerHTML = `
+    <select class="produtoSelect">
+      <option value="">Selecione o produto</option>
+      ${produtos
+        .map(
+          (p) =>
+            `<option value="${p.id}" data-quantidade="${p.quantidade}" data-nome="${p.nome}">
+              ${p.nome} (${p.marca})
+            </option>`
+        )
+        .join("")}
+    </select>
+
+    <input type="number" class="quantidadeInput" placeholder="Qtd" min="1" />
+    <button class="removerItem">Remover</button>
   `;
-}
 
-// === Carregar PRODUTOS ===
-async function carregarProdutos(select) {
-  select.innerHTML = `<option value="">Selecione um produto</option>`;
-  const snapshot = await getDocs(produtosRef);
-  snapshot.forEach((docSnap) => {
-    const p = docSnap.data();
-    const preco = Number(p.preco) || 0; // fallback caso não exista preço
-    const qtd = Number(p.quantidade) || 0;
-    select.innerHTML += `
-      <option value="${docSnap.id}" data-preco="${preco}" data-estoque="${qtd}">
-        ${p.nome} (${p.marca || "Sem marca"}) — Estoque: ${qtd}
-      </option>`;
+  itensContainer.appendChild(itemDiv);
+
+  itemDiv.querySelector(".removerItem").addEventListener("click", () => {
+    itemDiv.remove();
   });
 }
 
-// === Adicionar ITEM ===
-async function adicionarItem() {
-  const tbody = itensTable.querySelector("tbody");
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td><select class="form-select produto-select"></select></td>
-    <td><input type="number" min="1" value="1" class="form-control quantidade-input"></td>
-    <td><input type="text" class="form-control preco-input" readonly></td>
-    <td class="subtotal">R$ 0,00</td>
-    <td><button class="btn btn-danger btn-remove-item">Remover</button></td>
-  `;
-  tbody.appendChild(tr);
-
-  const produtoSelect = tr.querySelector(".produto-select");
-  await carregarProdutos(produtoSelect);
-
-  // Quando selecionar produto
-  produtoSelect.addEventListener("change", () => {
-    const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
-    tr.querySelector(".preco-input").value = preco.toFixed(2);
-    atualizarSubtotal(tr);
-  });
-
-  // Atualiza subtotal quando muda quantidade
-  tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
-
-  // Remove linha
-  tr.querySelector(".btn-remove-item").addEventListener("click", () => {
-    tr.remove();
-    calcularTotal();
-  });
-}
-
-// === Atualizar SUBTOTAL ===
-function atualizarSubtotal(tr) {
-  const qtd = Number(tr.querySelector(".quantidade-input").value);
-  const preco = Number(tr.querySelector(".preco-input").value);
-  tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
-  calcularTotal();
-}
-
-// === Calcular TOTAL ===
-function calcularTotal() {
-  let total = 0;
-  itensTable.querySelectorAll("tbody tr").forEach((tr) => {
-    const valor = Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
-    total += valor;
-  });
-  valorTotalInput.value = `R$ ${total.toFixed(2)}`;
-}
-
-// === Gerar ID da VENDA ===
-async function gerarIdVenda() {
-  const snapshot = await getDocs(vendasRef);
-  let maior = 0;
-  snapshot.forEach((docSnap) => {
-    const num = parseInt(docSnap.data().id?.replace(/\D/g, "")) || 0;
-    if (num > maior) maior = num;
-  });
-  return "V" + String(maior + 1).padStart(3, "0");
-}
-
-// === Finalizar VENDA ===
-async function finalizarVenda() {
-  const clienteId = selectCliente.value;
-  const status = selectStatus.value;
-  const data = new Date().toLocaleDateString("pt-BR");
-
-  if (!clienteId) return alert("Selecione um cliente!");
-  if (itensTable.querySelectorAll("tbody tr").length === 0)
-    return alert("Adicione ao menos um item!");
-
-  const itens = [];
-  itensTable.querySelectorAll("tbody tr").forEach((tr) => {
-    const produtoId = tr.querySelector(".produto-select").value;
-    if (!produtoId) return;
-    const qtd = Number(tr.querySelector(".quantidade-input").value);
-    const preco = Number(tr.querySelector(".preco-input").value);
-    itens.push({ produtoId, qtd, preco });
-  });
-
-  const total = Number(valorTotalInput.value.replace("R$ ", "")) || 0;
-  const idVenda = await gerarIdVenda();
-
-  const venda = {
-    id: idVenda,
-    cliente: clienteId,
-    status,
-    data,
-    itens,
-    total
-  };
-
-  await addDoc(vendasRef, venda);
-  alert("Venda cadastrada com sucesso!");
-  carregarVendas();
-}
-
-// === Carregar VENDAS ===
-async function carregarVendas() {
-  const tabela = document.querySelector("table.table tbody");
-  tabela.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
-
-  const snapshot = await getDocs(vendasRef);
-  if (snapshot.empty) {
-    tabela.innerHTML = "<tr><td colspan='6'>Nenhuma venda</td></tr>";
+// ======= CADASTRAR VENDA =======
+async function cadastrarVenda() {
+  const clienteId = clienteSelect.value;
+  if (!clienteId) {
+    alert("Selecione um cliente!");
     return;
   }
 
-  tabela.innerHTML = "";
-  for (const docSnap of snapshot.docs) {
-    const venda = docSnap.data();
-    const clienteSnap = await getDoc(doc(db, "clientes", venda.cliente));
-    const clienteNome = clienteSnap.exists() ? clienteSnap.data().nome : "Desconhecido";
+  const itens = [];
+  const itensDivs = itensContainer.querySelectorAll(".itemVenda");
 
-    tabela.innerHTML += `
-      <tr>
-        <td>${venda.id}</td>
-        <td>${clienteNome}</td>
-        <td>${venda.data}</td>
-        <td>${venda.status}</td>
-        <td>R$ ${venda.total.toFixed(2)}</td>
-        <td>
-          <button class="btn btn-info btn-detalhes" data-id="${docSnap.id}">Detalhes</button>
-          <button class="btn btn-danger btn-excluir" data-id="${docSnap.id}">Excluir</button>
-        </td>
-      </tr>
-    `;
+  for (let div of itensDivs) {
+    const select = div.querySelector(".produtoSelect");
+    const inputQtd = div.querySelector(".quantidadeInput");
+
+    const produtoId = select.value;
+    const quantidade = Number(inputQtd.value);
+
+    if (!produtoId || quantidade <= 0) continue;
+
+    const produto = produtos.find((p) => p.id === produtoId);
+    if (!produto) continue;
+
+    if (quantidade > produto.quantidade) {
+      alert(`Quantidade maior que o estoque do produto ${produto.nome}`);
+      return;
+    }
+
+    itens.push({
+      produtoId,
+      produtoNome: produto.nome,
+      quantidade,
+    });
+
+    await updateDoc(doc(db, "produtos", produtoId), {
+      quantidade: produto.quantidade - quantidade,
+    });
   }
 
-  document.querySelectorAll(".btn-detalhes").forEach(btn =>
-    btn.addEventListener("click", exibirDetalhesVenda)
-  );
-
-  document.querySelectorAll(".btn-excluir").forEach(btn =>
-    btn.addEventListener("click", excluirVenda)
-  );
-}
-
-// === Exibir Detalhes da Venda ===
-async function exibirDetalhesVenda(e) {
-  const id = e.currentTarget.dataset.id;
-  const vendaDoc = await getDoc(doc(db, "vendas", id));
-  if (!vendaDoc.exists()) return alert("Venda não encontrada!");
-
-  const v = vendaDoc.data();
-  const clienteSnap = await getDoc(doc(db, "clientes", v.cliente));
-  const clienteNome = clienteSnap.exists() ? clienteSnap.data().nome : "Desconhecido";
-
-  let detalhes = `ID: ${v.id}\nCliente: ${clienteNome}\nStatus: ${v.status}\nData: ${v.data}\n\nItens:\n`;
-
-  for (const item of v.itens) {
-    const prodSnap = await getDoc(doc(db, "produtos", item.produtoId));
-    const produtoNome = prodSnap.exists() ? prodSnap.data().nome : "Produto removido";
-    detalhes += `• ${produtoNome} — ${item.qtd} x R$ ${item.preco.toFixed(2)}\n`;
+  if (itens.length === 0) {
+    alert("Adicione pelo menos um produto válido!");
+    return;
   }
 
-  detalhes += `\nTotal: R$ ${v.total.toFixed(2)}`;
-  alert(detalhes);
-}
+  const novaVenda = {
+    clienteId,
+    itens,
+    criadoEm: new Date().toISOString(),
+  };
 
-// === Excluir Venda ===
-async function excluirVenda(e) {
-  const id = e.currentTarget.dataset.id;
-  if (!confirm("Deseja realmente excluir esta venda?")) return;
-  await deleteDoc(doc(db, "vendas", id));
-  alert("Venda excluída!");
+  await addDoc(vendasRef, novaVenda);
+  alert("Venda cadastrada com sucesso!");
+
+  itensContainer.innerHTML = "";
+  clienteSelect.value = "";
   carregarVendas();
 }
 
-// === Inicialização ===
-document.addEventListener("DOMContentLoaded", async () => {
-  await carregarClientes();
-  carregarStatus();
-  await adicionarItem();
-  await carregarVendas();
-});
+// ======= CARREGAR VENDAS =======
+async function carregarVendas() {
+  listaVendas.innerHTML = "";
+  const vendasSnap = await getDocs(vendasRef);
 
-btnAdicionarItem.addEventListener("click", adicionarItem);
-btnFinalizar.addEventListener("click", finalizarVenda);
+  for (let d of vendasSnap.docs) {
+    const venda = { id: d.id, ...d.data() };
+    const cliente = clientes.find((c) => c.id === venda.clienteId);
+
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <strong>Cliente:</strong> ${cliente ? cliente.nome : "Desconhecido"}<br>
+      <button class="detalhesVenda">Detalhes</button>
+      <button class="editarVenda">Editar</button>
+      <button class="excluirVenda">Excluir</button>
+    `;
+
+    // BOTÃO DETALHES
+    li.querySelector(".detalhesVenda").addEventListener("click", () => {
+      const detalhes = venda.itens
+        .map(
+          (i) =>
+            `Produto: ${i.produtoNome} — Quantidade: ${i.quantidade}`
+        )
+        .join("\n");
+      alert(
+        `Venda de ${cliente ? cliente.nome : "Desconhecido"}\n\n${detalhes}\n\nData: ${
+          venda.criadoEm
+        }`
+      );
+    });
+
+    // BOTÃO EDITAR
+    li.querySelector(".editarVenda").addEventListener("click", async () => {
+      const novaQtd = prompt("Digite a nova quantidade (para todos os produtos):");
+      if (!novaQtd) return;
+
+      const novosItens = venda.itens.map((i) => ({
+        ...i,
+        quantidade: Number(novaQtd),
+      }));
+
+      await updateDoc(doc(db, "vendas", venda.id), { itens: novosItens });
+      alert("Venda atualizada!");
+      carregarVendas();
+    });
+
+    // BOTÃO EXCLUIR
+    li.querySelector(".excluirVenda").addEventListener("click", async () => {
+      if (confirm("Tem certeza que deseja excluir esta venda?")) {
+        await deleteDoc(doc(db, "vendas", venda.id));
+        alert("Venda excluída!");
+        carregarVendas();
+      }
+    });
+
+    listaVendas.appendChild(li);
+  }
+}
+
+// ======= EVENTOS =======
+btnAddItem.addEventListener("click", adicionarItem);
+btnCadastrar.addEventListener("click", cadastrarVenda);
+
+// ======= INICIALIZAÇÃO =======
+carregarDados().then(carregarVendas);
