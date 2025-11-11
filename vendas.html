@@ -1,104 +1,188 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Gerenciar Vendas</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AllDev - Vendas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-dark text-light p-4">
 
-  <div class="container">
-    <h1 class="mb-4 text-center text-warning">📦 Gerenciar Vendas</h1>
+<body class="dashboard-page">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom" id="top-navbar">
+    <div class="container-fluid">
+      <button class="btn menu-toggle me-3" id="menu-toggle">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="navbar-logo-text">
+        <img src="LogoAlldev.jpg" alt="AllDev Logo">
+      </div>
+      <div class="d-flex align-items-center">
+        <span class="navbar-text me-3">Admin</span>
+        <div class="user-avatar-small">
+          <i class="fas fa-user-circle"></i>
+        </div>
+      </div>
+    </div>
+  </nav>
 
-    <div class="text-end mb-3">
-      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCadastroVenda">+ Nova Venda</button>
+  <!-- Layout -->
+  <div class="d-flex" id="wrapper">
+    <!-- Sidebar -->
+    <div class="bg-light border-end" id="sidebar-wrapper">
+      <div class="list-group list-group-flush">
+        <a href="dashboard.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-home"></i> Início
+        </a>
+        <a href="estoque.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-box"></i> Estoque
+        </a>
+        <a href="fornecedores.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-user-friends"></i> Fornecedores
+        </a>
+        <a href="clientes.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-users"></i> Clientes
+        </a>
+        <a href="vendas.html" class="list-group-item list-group-item-action p-3 active-menu">
+          <i class="fas fa-shopping-cart"></i> Vendas
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        <a href="perfil.html" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-cog"></i> Perfil
+        </a>
+        <a href="#" onclick="logout()" class="list-group-item list-group-item-action p-3">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
     </div>
 
-    <table class="table table-dark table-hover align-middle">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Cliente</th>
-          <th>Data</th>
-          <th>Status</th>
-          <th>Total</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <!-- Conteúdo -->
+    <div id="page-content-wrapper">
+      <div class="container-fluid p-4">
+        <h2 class="mb-4">Vendas</h2>
+
+        <div class="card p-3 shadow-sm">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="input-group w-50">
+              <input type="text" class="form-control" placeholder="Pesquisar vendas por código/cliente...">
+              <button class="btn btn-outline-secondary" type="button">
+                <i class="fas fa-search"></i> Buscar
+              </button>
+            </div>
+            <button class="btn btn-primary" style="background-color: var(--primary-color); border: none;" data-bs-toggle="modal" data-bs-target="#modalCadastroVenda">
+              <i class="fas fa-plus"></i> Nova Venda
+            </button>
+          </div>
+
+          <!-- Tabela de Vendas -->
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+              <thead class="table-dark-custom">
+                <tr>
+                  <th>ID Pedido</th>
+                  <th>Cliente</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Opções</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Vendas serão carregadas aqui via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Modal Cadastro / Edição -->
-  <div class="modal fade" id="modalCadastroVenda" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content bg-dark text-light">
-        <div class="modal-header">
-          <h5 class="modal-title text-warning">Nova Venda</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+  <!-- Modal: Cadastro / Edição de Venda -->
+  <div class="modal fade" id="modalCadastroVenda" tabindex="-1" aria-labelledby="modalCadastroVendaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title" id="modalCadastroVendaLabel"><i class="fas fa-cash-register"></i> Cadastrar / Editar Venda</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
         <div class="modal-body">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label>Cliente</label>
-              <select id="select-cliente" class="form-select bg-dark text-light border-secondary"></select>
+          <form>
+            <h5 class="mb-3"><i class="fas fa-info-circle"></i> Detalhes da Venda</h5>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Cliente</label>
+                <select id="select-cliente" class="form-select"></select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Data</label>
+                <input type="date" class="form-control">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Status</label>
+                <select id="select-status" class="form-select"></select>
+              </div>
             </div>
-            <div class="col-md-3">
-              <label>Status</label>
-              <select id="select-status" class="form-select bg-dark text-light border-secondary">
-                <option value="Pendente">Pendente</option>
-                <option value="Pago">Pago</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label>Data</label>
-              <input type="date" id="data-venda" class="form-control bg-dark text-light border-secondary">
-            </div>
-          </div>
 
-          <table id="itens-table" class="table table-bordered table-dark">
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Qtd</th>
-                <th>Preço</th>
-                <th>Subtotal</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+            <h5 class="mt-4"><i class="fas fa-list"></i> Itens da Venda</h5>
+            <div class="border p-3 mb-3 rounded">
+              <table class="table table-sm" id="itens-table">
+                <tbody></tbody>
+              </table>
+              <button type="button" class="btn btn-success" id="btn-adicionar-item">
+                <i class="fas fa-plus"></i> Adicionar Item
+              </button>
+            </div>
 
-          <div class="d-flex justify-content-between align-items-center">
-            <button type="button" id="btn-adicionar-item" class="btn btn-outline-light">+ Item</button>
-            <input type="text" id="valor-total" class="form-control w-25 text-end bg-dark text-light border-secondary" placeholder="R$ 0,00" readonly>
-          </div>
+            <h5 class="mt-4"><i class="fas fa-dollar-sign"></i> Resumo</h5>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Desconto</label>
+                <input type="text" class="form-control" id="desconto" placeholder="(opcional)">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Valor Total</label>
+                <input type="text" class="form-control" id="valor-total" disabled>
+              </div>
+            </div>
+          </form>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" id="btn-finalizar-venda" class="btn btn-success">Salvar Venda</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Fechar
+          </button>
+          <button type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;" id="btn-finalizar-venda">
+            <i class="fas fa-check"></i> Salvar Venda
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Detalhes -->
+  <!-- Modal: Detalhes da Venda -->
   <div class="modal fade" id="modalDetalhesVenda" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content bg-dark text-light">
-        <div class="modal-header">
-          <h5 class="modal-title text-warning">Detalhes da Venda</h5>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white">
+        <div class="modal-header border-0">
+          <h5 class="modal-title"><i class="fas fa-eye"></i> Detalhes da Venda</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body" id="detalhes-body"></div>
+        <div class="modal-body">
+          <!-- Conteúdo dinâmico será inserido via JS -->
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="firebase-config.js"></script>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="vendas.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
