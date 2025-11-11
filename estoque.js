@@ -131,6 +131,60 @@ async function carregarProdutos() {
   }
 }
 
+
+// =======================
+// FUNÇÃO DE PESQUISA
+// =======================
+document.getElementById("btnBuscar").addEventListener("click", async () => {
+  const termo = document.getElementById("pesquisa").value.trim().toLowerCase();
+  const tabela = document.getElementById("tabela-produtos");
+  tabela.innerHTML = `
+    <tr><td colspan="6" class="text-center text-muted">Pesquisando...</td></tr>
+  `;
+
+  try {
+    const produtosSnap = await getDocs(collection(db, "produtos"));
+    let html = "";
+
+    produtosSnap.forEach((docSnap) => {
+      const p = docSnap.data();
+      const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
+
+      // se o termo pesquisado aparecer em qualquer campo
+      if (texto.includes(termo)) {
+        html += `
+          <tr>
+            <td>${p.codigo}</td>
+            <td>${p.nome}</td>
+            <td>${p.marca}</td>
+            <td>${p.quantidade}</td>
+            <td>R$ ${(p.preco || 0).toFixed(2)}</td>
+            <td>
+              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docSnap.id}">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger btn-excluir" data-id="${docSnap.id}">
+                <i class="fas fa-trash-alt"></i> Excluir
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+    });
+
+    tabela.innerHTML =
+      html ||
+      `<tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td></tr>`;
+
+    conectarBotoes();
+  } catch (erro) {
+    console.error("Erro ao buscar produtos:", erro);
+    tabela.innerHTML = `
+      <tr><td colspan="6" class="text-center text-danger">Erro ao buscar produtos.</td></tr>
+    `;
+  }
+});
+
 // =======================
 // BOTÕES EDITAR / EXCLUIR
 // =======================
