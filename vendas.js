@@ -86,6 +86,68 @@ async function adicionarItem() {
   });
 }
 
+// =======================
+// PESQUISA EM TEMPO REAL
+// =======================
+
+const campoPesquisa = document.getElementById("pesquisa");
+const tabela = document.getElementById("tabela-produtos");
+
+campoPesquisa.addEventListener("input", async () => {
+  const termo = campoPesquisa.value.trim().toLowerCase();
+
+  if (termo === "") {
+    carregarProdutos(); // se o campo estiver vazio, mostra tudo
+    return;
+  }
+
+  tabela.innerHTML = `
+    <tr><td colspan="6" class="text-center text-muted">Filtrando...</td></tr>
+  `;
+
+  try {
+    const produtosSnap = await getDocs(collection(db, "produtos"));
+    let html = "";
+
+    produtosSnap.forEach((docSnap) => {
+      const p = docSnap.data();
+      const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
+
+      if (texto.includes(termo)) {
+        html += `
+          <tr>
+            <td>${p.codigo}</td>
+            <td>${p.nome}</td>
+            <td>${p.marca}</td>
+            <td>${p.quantidade}</td>
+            <td>R$ ${(p.preco || 0).toFixed(2)}</td>
+            <td>
+              <button class="btn btn-sm btn-info me-2 btn-editar" data-id="${docSnap.id}">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger btn-excluir" data-id="${docSnap.id}">
+                <i class="fas fa-trash-alt"></i> Excluir
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+    });
+
+    tabela.innerHTML =
+      html ||
+      `<tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td></tr>`;
+
+    conectarBotoes();
+  } catch (erro) {
+    console.error("Erro ao buscar produtos:", erro);
+    tabela.innerHTML = `
+      <tr><td colspan="6" class="text-center text-danger">Erro ao buscar produtos.</td></tr>
+    `;
+  }
+});
+
+
 // === Atualizar SUBTOTAL ===
 function atualizarSubtotal(tr) {
   const select = tr.querySelector(".produto-select");
