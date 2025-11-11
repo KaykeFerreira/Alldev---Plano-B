@@ -9,21 +9,22 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referências Firebase
 const clientesRef = collection(db, "clientes");
 const produtosRef = collection(db, "produtos");
 const vendasRef = collection(db, "vendas");
 
-// Elementos
 const selectCliente = document.getElementById("select-cliente");
 const selectStatus = document.getElementById("select-status");
 const btnAdicionarItem = document.getElementById("btn-adicionar-item");
 const btnFinalizar = document.getElementById("btn-finalizar-venda");
+const btnAplicarDesconto = document.getElementById("btn-aplicar-desconto");
 const itensTable = document.getElementById("itens-table");
 const valorTotalInput = document.getElementById("valor-total");
 const descontoInput = document.getElementById("valor-desconto");
+const dataInput = document.getElementById("data-venda");
 
-// === Carregar CLIENTES ===
+// ========== FUNÇÕES ==========
+
 async function carregarClientes() {
   selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
   const snapshot = await getDocs(clientesRef);
@@ -33,7 +34,6 @@ async function carregarClientes() {
   });
 }
 
-// === Carregar STATUS ===
 function carregarStatus() {
   selectStatus.innerHTML = `
     <option value="Pago">Pago</option>
@@ -41,7 +41,6 @@ function carregarStatus() {
   `;
 }
 
-// === Carregar PRODUTOS ===
 async function carregarProdutos(select) {
   select.innerHTML = `<option value="">Selecione um produto</option>`;
   const snapshot = await getDocs(produtosRef);
@@ -53,16 +52,14 @@ async function carregarProdutos(select) {
       <option 
         value="${doc.id}" 
         data-preco="${preco}" 
-        data-quant="${quantidade}"
+        data-quant="${quantidade}" 
         data-nome="${p.nome}"
       >
-        ${p.nome} (${p.marca || "Sem marca"}) - R$ ${preco.toFixed(2)} | Estoque: ${quantidade}
-      </option>
-    `;
+        ${p.nome} - R$ ${preco.toFixed(2)} | Estoque: ${quantidade}
+      </option>`;
   });
 }
 
-// === Adicionar ITEM na tabela ===
 async function adicionarItem() {
   const tbody = itensTable.querySelector("tbody");
   const tr = document.createElement("tr");
@@ -86,7 +83,6 @@ async function adicionarItem() {
   });
 }
 
-// === Atualizar SUBTOTAL ===
 function atualizarSubtotal(tr) {
   const select = tr.querySelector(".produto-select");
   const qtdInput = tr.querySelector(".quantidade-input");
@@ -108,7 +104,6 @@ function atualizarSubtotal(tr) {
   calcularTotal();
 }
 
-// === Calcular TOTAL com DESCONTO ===
 function calcularTotal() {
   let total = 0;
   itensTable.querySelectorAll("tbody tr").forEach(tr => {
@@ -116,13 +111,18 @@ function calcularTotal() {
     total += subtotal;
   });
 
-  const desconto = Number(descontoInput?.value || 0);
-  const totalComDesconto = total - desconto;
-
-  valorTotalInput.value = `R$ ${Math.max(totalComDesconto, 0).toFixed(2)}`;
+  const desconto = Number(descontoInput.dataset.aplicado || 0);
+  valorTotalInput.value = `R$ ${(total - desconto).toFixed(2)}`;
 }
 
-// === Gerar ID da venda ===
+// Botão aplicar desconto
+btnAplicarDesconto.addEventListener("click", () => {
+  const valor = Number(descontoInput.value) || 0;
+  descontoInput.dataset.aplicado = valor;
+  calcularTotal();
+  alert(`✅ Desconto de R$ ${valor.toFixed(2)} aplicado!`);
+});
+
 async function gerarIdVenda() {
   const snapshot = await getDocs(vendasRef);
   let maior = 0;
@@ -133,12 +133,11 @@ async function gerarIdVenda() {
   return "V" + String(maior + 1).padStart(3, "0");
 }
 
-// === Finalizar VENDA ===
 async function finalizarVenda() {
   const clienteId = selectCliente.value;
   const status = selectStatus.value;
-  const data = document.querySelector("#modalCadastroVenda input[type=date]").value;
-  const desconto = Number(descontoInput?.value || 0);
+  const data = dataInput.value;
+  const desconto = Number(descontoInput.dataset.aplicado || 0);
 
   if (!clienteId) return alert("Selecione um cliente!");
   const linhas = itensTable.querySelectorAll("tbody tr");
@@ -149,9 +148,7 @@ async function finalizarVenda() {
     const produtoId = tr.querySelector(".produto-select").value;
     const qtd = Number(tr.querySelector(".quantidade-input").value);
     const preco = Number(tr.querySelector(".preco-input").value);
-    if (produtoId && qtd > 0) {
-      itens.push({ produtoId, qtd, preco });
-    }
+    if (produtoId && qtd > 0) itens.push({ produtoId, qtd, preco });
   });
 
   const total = Number(valorTotalInput.value.replace("R$ ", "")) || 0;
@@ -167,156 +164,27 @@ async function finalizarVenda() {
 
   await addDoc(vendasRef, venda);
   alert("✅ Venda cadastrada com sucesso!");
-  document.getElementById("modalCadastroVenda").querySelector("form").reset();
+
+  // Fechar modal automaticamente
+  const modalEl = document.getElementById("modalCadastroVenda");
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  modal.hide();
+
+  document.getElementById("form-venda").reset();
   itensTable.querySelector("tbody").innerHTML = "";
   valorTotalInput.value = "";
+  descontoInput.dataset.aplicado = 0;
   await adicionarItem();
   await carregarVendas();
 }
 
-// === Exibir DETALHES da venda ===
-async function exibirDetalhes(idVenda) {
-  const ref = doc(db, "vendas", idVenda);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return alert("Venda não encontrada!");
-  const v = snap.data();
-
-  // Nome do cliente
-  const clienteSnap = await getDoc(doc(db, "clientes", v.cliente));
-  const nomeCliente = clienteSnap.exists() ? clienteSnap.data().nome : "Cliente não encontrado";
-
-  // Lista de itens detalhados
-  let detalhesItens = `
-    <table class="table table-bordered text-start">
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>Qtd</th>
-          <th>Preço Unit.</th>
-          <th>Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-  for (const item of v.itens) {
-    const prodSnap = await getDoc(doc(db, "produtos", item.produtoId));
-    const nomeProd = prodSnap.exists() ? prodSnap.data().nome : "Produto desconhecido";
-    const subtotal = item.qtd * item.preco;
-    detalhesItens += `
-      <tr>
-        <td>${nomeProd}</td>
-        <td>${item.qtd}</td>
-        <td>R$ ${item.preco.toFixed(2)}</td>
-        <td>R$ ${subtotal.toFixed(2)}</td>
-      </tr>
-    `;
-  }
-  detalhesItens += `
-      </tbody>
-    </table>
-  `;
-
-  // SweetAlert detalhado
-  Swal.fire({
-    title: `📋 Detalhes da Venda ${v.id}`,
-    html: `
-      <p><b>Cliente:</b> ${nomeCliente}</p>
-      <p><b>Data:</b> ${v.data}</p>
-      <p><b>Status:</b> ${v.status}</p>
-      <hr>
-      ${detalhesItens}
-      <hr>
-      <p><b>Desconto:</b> R$ ${(v.desconto || 0).toFixed(2)}</p>
-      <h5><b>Total Final:</b> R$ ${v.total.toFixed(2)}</h5>
-    `,
-    width: 700,
-    confirmButtonText: "Fechar"
-  });
-}
-
-// === Editar VENDA ===
-async function editarVenda(idVenda) {
-  const ref = doc(db, "vendas", idVenda);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return alert("Venda não encontrada!");
-  const v = snap.data();
-
-  const novoStatus = prompt("Novo status (Pago/Pendente):", v.status);
-  if (!novoStatus) return;
-
-  await updateDoc(ref, { status: novoStatus });
-  alert("📝 Status da venda atualizado!");
-  await carregarVendas();
-}
-
-// === Excluir VENDA ===
-async function excluirVenda(idVenda) {
-  if (!confirm("Deseja realmente excluir esta venda?")) return;
-  await deleteDoc(doc(db, "vendas", idVenda));
-  alert("🗑️ Venda excluída!");
-  await carregarVendas();
-}
-
-// === Carregar VENDAS ===
-async function carregarVendas() {
-  const tabela = document.querySelector("table.table tbody");
-  tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
-
-  const snapshot = await getDocs(vendasRef);
-  if (snapshot.empty) {
-    tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Nenhuma venda cadastrada</td></tr>";
-    return;
-  }
-
-  tabela.innerHTML = "";
-  for (const docSnap of snapshot.docs) {
-    const v = docSnap.data();
-
-    const clienteSnap = await getDoc(doc(db, "clientes", v.cliente));
-    const nomeCliente = clienteSnap.exists() ? clienteSnap.data().nome : "Desconhecido";
-
-    tabela.innerHTML += `
-      <tr>
-        <td>${v.id}</td>
-        <td>${nomeCliente}</td>
-        <td>${v.data}</td>
-        <td>${v.status}</td>
-        <td>R$ ${Number(v.total).toFixed(2)}</td>
-        <td>
-          <button class="btn btn-sm btn-info btn-detalhes" data-id="${docSnap.id}">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="btn btn-sm btn-primary btn-editar" data-id="${docSnap.id}">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button class="btn btn-sm btn-danger btn-excluir" data-id="${docSnap.id}">
-            <i class="fas fa-trash-alt"></i>
-          </button>
-        </td>
-      </tr>
-    `;
-  }
-
-  document.querySelectorAll(".btn-detalhes").forEach(btn =>
-    btn.addEventListener("click", () => exibirDetalhes(btn.dataset.id))
-  );
-  document.querySelectorAll(".btn-editar").forEach(btn =>
-    btn.addEventListener("click", () => editarVenda(btn.dataset.id))
-  );
-  document.querySelectorAll(".btn-excluir").forEach(btn =>
-    btn.addEventListener("click", () => excluirVenda(btn.dataset.id))
-  );
-}
-
-// === Eventos ===
-btnAdicionarItem.addEventListener("click", adicionarItem);
-btnFinalizar.addEventListener("click", finalizarVenda);
-if (descontoInput) descontoInput.addEventListener("input", calcularTotal);
-
-// === Inicialização ===
+// ========== INICIALIZAÇÃO ==========
 document.addEventListener("DOMContentLoaded", async () => {
   await carregarClientes();
   carregarStatus();
   await adicionarItem();
   await carregarVendas();
 });
+
+btnAdicionarItem.addEventListener("click", adicionarItem);
+btnFinalizar.addEventListener("click", finalizarVenda);
