@@ -149,6 +149,13 @@ document.getElementById("btnBuscar").addEventListener("click", async () => {
     produtosSnap.forEach((docSnap) => {
       const p = docSnap.data();
       const texto = `${p.codigo} ${p.nome} ${p.marca}`.toLowerCase();
+      
+      document.getElementById("pesquisa").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    document.getElementById("btnBuscar").click();
+  }
+});
+
 
       // se o termo pesquisado aparecer em qualquer campo
       if (texto.includes(termo)) {
