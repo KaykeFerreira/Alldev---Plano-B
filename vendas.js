@@ -9,12 +9,16 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// Referências Firebase
+// ===============================
+// 🔥 Referências Firebase
+// ===============================
 const clientesRef = collection(db, "clientes");
 const produtosRef = collection(db, "produtos");
 const vendasRef = collection(db, "vendas");
 
-// Elementos
+// ===============================
+// 🎯 Elementos da Página
+// ===============================
 const selectCliente = document.getElementById("select-cliente");
 const selectStatus = document.getElementById("select-status");
 const btnAdicionarItem = document.getElementById("btn-adicionar-item");
@@ -22,7 +26,9 @@ const btnFinalizar = document.getElementById("btn-finalizar-venda");
 const itensTable = document.getElementById("itens-table");
 const valorTotalInput = document.getElementById("valor-total");
 
-// === Carregar CLIENTES ===
+// ===============================
+// 👥 Carregar CLIENTES
+// ===============================
 async function carregarClientes() {
   selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
   const snapshot = await getDocs(clientesRef);
@@ -32,7 +38,9 @@ async function carregarClientes() {
   });
 }
 
-// === Carregar STATUS ===
+// ===============================
+// 💰 Carregar STATUS
+// ===============================
 function carregarStatus() {
   selectStatus.innerHTML = `
     <option value="Pago">Pago</option>
@@ -40,7 +48,9 @@ function carregarStatus() {
   `;
 }
 
-// === Carregar PRODUTOS ===
+// ===============================
+// 📦 Carregar PRODUTOS
+// ===============================
 async function carregarProdutos(select) {
   select.innerHTML = `<option value="">Selecione um produto</option>`;
   try {
@@ -65,7 +75,9 @@ async function carregarProdutos(select) {
   }
 }
 
-// === Adicionar ITEM na tabela ===
+// ===============================
+// ➕ Adicionar ITEM na tabela
+// ===============================
 async function adicionarItem() {
   const tbody = itensTable.querySelector("tbody");
   const tr = document.createElement("tr");
@@ -81,26 +93,26 @@ async function adicionarItem() {
   const produtoSelect = tr.querySelector(".produto-select");
   await carregarProdutos(produtoSelect);
 
-  // Atualiza preço e subtotal ao selecionar produto
+  // ✅ Atualiza preço e subtotal ao selecionar produto
   produtoSelect.addEventListener("change", () => {
     const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
     tr.querySelector(".preco-input").value = preco.toFixed(2);
     atualizarSubtotal(tr);
   });
 
-  // Atualiza subtotal ao mudar quantidade
+  // ✅ Atualiza subtotal ao mudar quantidade
   tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
 
-  // Remover item
+  // 🗑️ Remover item
   tr.querySelector(".btn-remove-item").addEventListener("click", () => {
     tr.remove();
     calcularTotal();
   });
-
-  atualizarSubtotal(tr);
 }
 
-// === Atualizar SUBTOTAL ===
+// ===============================
+// 🧮 Atualizar SUBTOTAL
+// ===============================
 function atualizarSubtotal(tr) {
   const select = tr.querySelector(".produto-select");
   const qtdInput = tr.querySelector(".quantidade-input");
@@ -121,7 +133,9 @@ function atualizarSubtotal(tr) {
   calcularTotal();
 }
 
-// === Calcular TOTAL ===
+// ===============================
+// 💵 Calcular TOTAL
+// ===============================
 function calcularTotal() {
   let total = 0;
   itensTable.querySelectorAll("tbody tr").forEach(tr => {
@@ -131,7 +145,9 @@ function calcularTotal() {
   valorTotalInput.value = `R$ ${total.toFixed(2)}`;
 }
 
-// === Gerar ID da venda ===
+// ===============================
+// 🆔 Gerar ID da venda
+// ===============================
 async function gerarIdVenda() {
   const snapshot = await getDocs(vendasRef);
   let maior = 0;
@@ -142,7 +158,9 @@ async function gerarIdVenda() {
   return "V" + String(maior + 1).padStart(3, "0");
 }
 
-// === Finalizar VENDA ===
+// ===============================
+// ✅ Finalizar VENDA
+// ===============================
 async function finalizarVenda() {
   const clienteId = selectCliente.value;
   const status = selectStatus.value;
@@ -175,7 +193,7 @@ async function finalizarVenda() {
   await addDoc(vendasRef, venda);
   alert("✅ Venda cadastrada com sucesso!");
 
-  // Fechar modal e resetar
+  // 🔒 Fechar modal e limpar
   const modalEl = document.getElementById('modalCadastroVenda');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.hide();
@@ -186,17 +204,20 @@ async function finalizarVenda() {
   await carregarVendas();
 }
 
-// === Editar VENDA ===
+// ===============================
+// ✏️ Editar VENDA
+// ===============================
 async function editarVenda(idVenda) {
   const ref = doc(db, "vendas", idVenda);
   const snap = await getDoc(ref);
   if (!snap.exists()) return alert("Venda não encontrada!");
-
   const v = snap.data();
   alert(`🔧 Edição de venda ainda em construção (Venda ${v.id})`);
 }
 
-// === Excluir VENDA ===
+// ===============================
+// 🗑️ Excluir VENDA
+// ===============================
 async function excluirVenda(idVenda) {
   if (!confirm("Deseja realmente excluir esta venda?")) return;
   try {
@@ -209,7 +230,9 @@ async function excluirVenda(idVenda) {
   }
 }
 
-// === Carregar VENDAS ===
+// ===============================
+// 📋 Carregar VENDAS
+// ===============================
 async function carregarVendas() {
   const tabela = document.querySelector("table.table tbody");
   tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
@@ -250,11 +273,15 @@ async function carregarVendas() {
   });
 }
 
-// === Eventos ===
+// ===============================
+// ⚙️ Eventos
+// ===============================
 btnAdicionarItem.addEventListener("click", adicionarItem);
 btnFinalizar.addEventListener("click", finalizarVenda);
 
-// === Inicialização ===
+// ===============================
+// 🚀 Inicialização
+// ===============================
 document.addEventListener("DOMContentLoaded", async () => {
   await carregarClientes();
   carregarStatus();
