@@ -1,249 +1,104 @@
-import { db } from "./firebase-config.js";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  doc,
-  getDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerenciar Vendas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-light p-4">
 
-// Coleções
-const clientesRef = collection(db, "clientes");
-const produtosRef = collection(db, "produtos");
-const vendasRef = collection(db, "vendas");
+  <div class="container">
+    <h1 class="mb-4 text-center text-warning">📦 Gerenciar Vendas</h1>
 
-// Elementos da página
-const selectCliente = document.getElementById("select-cliente");
-const selectStatus = document.getElementById("select-status");
-const btnAdicionarItem = document.getElementById("btn-adicionar-item");
-const btnFinalizar = document.getElementById("btn-finalizar-venda");
-const itensTable = document.getElementById("itens-table");
-const valorTotalInput = document.getElementById("valor-total");
-const descontoInput = document.getElementById("desconto");
+    <div class="text-end mb-3">
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCadastroVenda">+ Nova Venda</button>
+    </div>
 
-// === Carregar CLIENTES ===
-async function carregarClientes() {
-  selectCliente.innerHTML = `<option value="">Selecione um cliente</option>`;
-  const snapshot = await getDocs(clientesRef);
-  snapshot.forEach((docSnap) => {
-    const cliente = docSnap.data();
-    selectCliente.innerHTML += `<option value="${docSnap.id}">${cliente.nome}</option>`;
-  });
-}
+    <table class="table table-dark table-hover align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Cliente</th>
+          <th>Data</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-// === Carregar STATUS ===
-function carregarStatus() {
-  selectStatus.innerHTML = `
-      <option value="Pago">Pago</option>
-      <option value="Pendente">Pendente</option>
-  `;
-}
+  <!-- Modal Cadastro / Edição -->
+  <div class="modal fade" id="modalCadastroVenda" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title text-warning">Nova Venda</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
 
-// === Carregar PRODUTOS ===
-async function carregarProdutos(select) {
-  select.innerHTML = `<option value="">Selecione um produto</option>`;
-  const snapshot = await getDocs(produtosRef);
-  snapshot.forEach((docSnap) => {
-    const p = docSnap.data();
-    select.innerHTML += `
-      <option value="${docSnap.id}" data-preco="${p.preco}" data-quant="${p.quantidade}">
-        ${p.nome} (${p.marca}) - Estoque: ${p.quantidade}
-      </option>
-    `;
-  });
-}
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label>Cliente</label>
+              <select id="select-cliente" class="form-select bg-dark text-light border-secondary"></select>
+            </div>
+            <div class="col-md-3">
+              <label>Status</label>
+              <select id="select-status" class="form-select bg-dark text-light border-secondary">
+                <option value="Pendente">Pendente</option>
+                <option value="Pago">Pago</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label>Data</label>
+              <input type="date" id="data-venda" class="form-control bg-dark text-light border-secondary">
+            </div>
+          </div>
 
-// === Adicionar ITEM ===
-async function adicionarItem() {
-  const tbody = itensTable.querySelector("tbody");
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td><select class="form-select produto-select"></select></td>
-    <td><input type="number" class="form-control quantidade-input" value="1" min="1"></td>
-    <td><input type="text" class="form-control preco-input" disabled></td>
-    <td class="subtotal">R$ 0,00</td>
-    <td><button class="btn btn-danger btn-remove-item"><i class="fas fa-trash-alt"></i></button></td>
-  `;
-  tbody.appendChild(tr);
+          <table id="itens-table" class="table table-bordered table-dark">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>Preço</th>
+                <th>Subtotal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
 
-  const produtoSelect = tr.querySelector(".produto-select");
-  await carregarProdutos(produtoSelect);
+          <div class="d-flex justify-content-between align-items-center">
+            <button type="button" id="btn-adicionar-item" class="btn btn-outline-light">+ Item</button>
+            <input type="text" id="valor-total" class="form-control w-25 text-end bg-dark text-light border-secondary" placeholder="R$ 0,00" readonly>
+          </div>
+        </div>
 
-  produtoSelect.addEventListener("change", () => {
-    const preco = Number(produtoSelect.selectedOptions[0]?.dataset.preco || 0);
-    tr.querySelector(".preco-input").value = preco.toFixed(2);
-    atualizarSubtotal(tr);
-  });
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="btn-finalizar-venda" class="btn btn-success">Salvar Venda</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  tr.querySelector(".quantidade-input").addEventListener("input", () => atualizarSubtotal(tr));
+  <!-- Modal Detalhes -->
+  <div class="modal fade" id="modalDetalhesVenda" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title text-warning">Detalhes da Venda</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="detalhes-body"></div>
+      </div>
+    </div>
+  </div>
 
-  tr.querySelector(".btn-remove-item").addEventListener("click", () => {
-    tr.remove();
-    calcularTotal();
-  });
-}
-
-// === Atualizar SUBTOTAL ===
-function atualizarSubtotal(tr) {
-  const select = tr.querySelector(".produto-select");
-  const qtd = Number(tr.querySelector(".quantidade-input").value);
-  const preco = Number(tr.querySelector(".preco-input").value);
-  if (!select.value) return;
-
-  tr.querySelector(".subtotal").textContent = `R$ ${(qtd * preco).toFixed(2)}`;
-  calcularTotal();
-}
-
-// === Calcular TOTAL ===
-function calcularTotal() {
-  let total = 0;
-  itensTable.querySelectorAll("tbody tr").forEach((tr) => {
-    const valor = Number(tr.querySelector(".subtotal").textContent.replace("R$ ", "")) || 0;
-    total += valor;
-  });
-  valorTotalInput.value = `R$ ${total.toFixed(2)}`;
-}
-
-// === Gerar ID da venda ===
-async function gerarIdVenda() {
-  const snapshot = await getDocs(vendasRef);
-  let maior = 0;
-  snapshot.forEach((doc) => {
-    const num = parseInt(doc.data().id?.replace(/\D/g, "")) || 0;
-    if (num > maior) maior = num;
-  });
-  return "V" + String(maior + 1).padStart(3, "0");
-}
-
-// === Finalizar VENDA ===
-async function finalizarVenda() {
-  const clienteId = selectCliente.value;
-  const status = selectStatus.value;
-  const data = document.querySelector("#modalCadastroVenda input[type=date]").value;
-
-  if (!clienteId) return alert("Selecione um cliente!");
-  if (itensTable.querySelectorAll("tbody tr").length === 0)
-    return alert("Adicione ao menos um item!");
-
-  const itens = [];
-  itensTable.querySelectorAll("tbody tr").forEach((tr) => {
-    const produtoId = tr.querySelector(".produto-select").value;
-    if (!produtoId) return;
-    const qtd = Number(tr.querySelector(".quantidade-input").value);
-    const preco = Number(tr.querySelector(".preco-input").value);
-    itens.push({ produtoId, qtd, preco });
-  });
-
-  const total = Number(valorTotalInput.value.replace("R$ ", ""));
-  const venda = {
-    id: await gerarIdVenda(),
-    cliente: clienteId,
-    status,
-    data,
-    itens,
-    total,
-  };
-
-  await addDoc(vendasRef, venda);
-  alert("Venda cadastrada com sucesso!");
-  carregarVendas();
-
-  // limpar modal
-  itensTable.querySelector("tbody").innerHTML = "";
-  valorTotalInput.value = "";
-  document.querySelector("#modalCadastroVenda form").reset();
-  const modal = bootstrap.Modal.getInstance(document.getElementById("modalCadastroVenda"));
-  modal.hide();
-}
-
-// === Carregar VENDAS ===
-async function carregarVendas() {
-  const tabela = document.querySelector("table.table tbody");
-  tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Carregando...</td></tr>";
-
-  const snapshot = await getDocs(vendasRef);
-  if (snapshot.empty) {
-    tabela.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Nenhuma venda</td></tr>";
-    return;
-  }
-
-  tabela.innerHTML = "";
-
-  for (const docSnap of snapshot.docs) {
-    const venda = docSnap.data();
-    const clienteSnap = await getDoc(doc(db, "clientes", venda.cliente));
-    const clienteNome = clienteSnap.exists() ? clienteSnap.data().nome : "Desconhecido";
-
-    tabela.innerHTML += `
-      <tr>
-        <td>${venda.id}</td>
-        <td>${clienteNome}</td>
-        <td>${venda.data}</td>
-        <td>${venda.status}</td>
-        <td>R$ ${venda.total.toFixed(2)}</td>
-        <td>
-          <button class="btn btn-info btn-detalhes" data-id="${docSnap.id}"><i class="fas fa-eye"></i></button>
-          <button class="btn btn-danger btn-excluir" data-id="${docSnap.id}"><i class="fas fa-trash-alt"></i></button>
-        </td>
-      </tr>
-    `;
-  }
-
-  document.querySelectorAll(".btn-detalhes").forEach(btn =>
-    btn.addEventListener("click", exibirDetalhesVenda)
-  );
-
-  document.querySelectorAll(".btn-excluir").forEach(btn =>
-    btn.addEventListener("click", excluirVenda)
-  );
-}
-
-// === Exibir Detalhes da Venda ===
-async function exibirDetalhesVenda(e) {
-  const id = e.currentTarget.dataset.id;
-  const vendaDoc = await getDoc(doc(db, "vendas", id));
-  if (!vendaDoc.exists()) return alert("Venda não encontrada!");
-
-  const v = vendaDoc.data();
-  const clienteSnap = await getDoc(doc(db, "clientes", v.cliente));
-  const clienteNome = clienteSnap.exists() ? clienteSnap.data().nome : "Desconhecido";
-
-  let detalhes = `
-    <b>ID:</b> ${v.id}<br>
-    <b>Cliente:</b> ${clienteNome}<br>
-    <b>Status:</b> ${v.status}<br>
-    <b>Data:</b> ${v.data}<br><hr>
-    <b>Itens:</b><br>
-  `;
-
-  for (const item of v.itens) {
-    const prodSnap = await getDoc(doc(db, "produtos", item.produtoId));
-    const produtoNome = prodSnap.exists() ? prodSnap.data().nome : "Produto removido";
-    detalhes += `• ${produtoNome} — ${item.qtd} x R$ ${item.preco.toFixed(2)}<br>`;
-  }
-
-  detalhes += `<hr><b>Total:</b> R$ ${v.total.toFixed(2)}`;
-
-  alert(detalhes);
-}
-
-// === Excluir Venda ===
-async function excluirVenda(e) {
-  const id = e.currentTarget.dataset.id;
-  if (!confirm("Deseja realmente excluir esta venda?")) return;
-  await deleteDoc(doc(db, "vendas", id));
-  alert("Venda excluída!");
-  carregarVendas();
-}
-
-// === Inicialização ===
-document.addEventListener("DOMContentLoaded", async () => {
-  await carregarClientes();
-  carregarStatus();
-  await adicionarItem();
-  await carregarVendas();
-});
-
-btnAdicionarItem.addEventListener("click", adicionarItem);
-btnFinalizar.addEventListener("click", finalizarVenda);
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="vendas.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
