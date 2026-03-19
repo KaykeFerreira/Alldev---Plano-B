@@ -27,5 +27,5 @@ async function carregarDados() {
 // 🔹 Logout
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await signOut(auth);
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 });
