@@ -15,7 +15,7 @@ form.addEventListener("submit", async (e) => {
     // Faz login no Firebase Auth
     await signInWithEmailAndPassword(auth, email, senha);
     alert("✅ Login realizado com sucesso!");
-    window.location.href = "clientes.html"; // Redireciona após o login
+    window.location.href = "dashboard.html"; // Redireciona após o login
   } catch (error) {
     console.error("Erro ao fazer login:", error.code, error.message);
 
